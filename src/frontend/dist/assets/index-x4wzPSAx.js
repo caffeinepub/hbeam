@@ -47238,6 +47238,7 @@ function AppView({
   onDisconnect,
   onLock
 }) {
+  const { actor } = useActor();
   const [selectedContact, setSelectedContact] = reactExports.useState(null);
   const [messages, setMessages] = reactExports.useState(DEMO_MESSAGES);
   const [input, setInput] = reactExports.useState("");
@@ -47280,12 +47281,12 @@ function AppView({
         displayName: name
       });
       ue$1.success("Contact added!");
-    } catch {
-      ue$1.error("Failed to add contact");
+      setAddOpen(false);
+      setNewContactAddr("");
+      setNewContactName("");
+    } catch (e) {
+      ue$1.error((e == null ? void 0 : e.message) ?? "Failed to add contact");
     }
-    setAddOpen(false);
-    setNewContactAddr("");
-    setNewContactName("");
   };
   const handleRemoveContact = async (addr) => {
     try {
@@ -47398,67 +47399,80 @@ function AppView({
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-4 py-3 border-b border-surface-3", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-semibold text-muted-foreground uppercase tracking-wider", children: "Contacts" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(Dialog, { open: addOpen, onOpenChange: setAddOpen, children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "button",
-                      {
-                        type: "button",
-                        className: "text-muted-foreground hover:text-mint transition-colors p-1",
-                        "data-ocid": "contacts.add.open_modal_button",
-                        children: /* @__PURE__ */ jsxRuntimeExports.jsx(UserPlus, { className: "w-4 h-4" })
-                      }
-                    ) }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                      DialogContent,
-                      {
-                        className: "glass-card border-surface-3 w-[calc(100vw-2rem)] max-w-md mx-auto",
-                        "data-ocid": "contacts.add.dialog",
-                        children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: "Add Contact" }) }),
-                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3 pt-2", children: [
-                            /* @__PURE__ */ jsxRuntimeExports.jsx(
-                              Input,
-                              {
-                                value: newContactAddr,
-                                onChange: (e) => setNewContactAddr(e.target.value),
-                                placeholder: "hoosat:q...",
-                                className: "bg-surface-2 border-surface-3 h-12 text-base",
-                                "data-ocid": "contacts.add.input"
-                              }
-                            ),
-                            /* @__PURE__ */ jsxRuntimeExports.jsx(
-                              Input,
-                              {
-                                value: newContactName,
-                                onChange: (e) => setNewContactName(e.target.value),
-                                placeholder: "Display name (optional)",
-                                className: "bg-surface-2 border-surface-3 h-12 text-base",
-                                "data-ocid": "contacts.name.input"
-                              }
-                            ),
-                            /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                              Button,
-                              {
-                                type: "button",
-                                onClick: handleAddContact,
-                                disabled: !newContactAddr || addContact.isPending,
-                                className: "w-full rounded-full h-12",
-                                style: {
-                                  background: "oklch(0.82 0.19 152)",
-                                  color: "oklch(0.10 0.01 150)"
-                                },
-                                "data-ocid": "contacts.add.confirm_button",
-                                children: [
-                                  addContact.isPending ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "w-4 h-4 animate-spin mr-2" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "w-4 h-4 mr-2" }),
-                                  "Add Contact"
-                                ]
-                              }
-                            )
-                          ] })
-                        ]
-                      }
-                    )
-                  ] })
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    Dialog,
+                    {
+                      open: addOpen,
+                      onOpenChange: (open) => {
+                        setAddOpen(open);
+                        if (open) {
+                          setNewContactAddr("");
+                          setNewContactName("");
+                        }
+                      },
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            className: "text-muted-foreground hover:text-mint transition-colors p-1",
+                            "data-ocid": "contacts.add.open_modal_button",
+                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(UserPlus, { className: "w-4 h-4" })
+                          }
+                        ) }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          DialogContent,
+                          {
+                            className: "glass-card border-surface-3 w-[calc(100vw-2rem)] max-w-md mx-auto",
+                            "data-ocid": "contacts.add.dialog",
+                            children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: "Add Contact" }) }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3 pt-2", children: [
+                                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                                  Input,
+                                  {
+                                    value: newContactAddr,
+                                    onChange: (e) => setNewContactAddr(e.target.value),
+                                    placeholder: "hoosat:q...",
+                                    className: "bg-surface-2 border-surface-3 h-12 text-base",
+                                    "data-ocid": "contacts.add.input"
+                                  }
+                                ),
+                                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                                  Input,
+                                  {
+                                    value: newContactName,
+                                    onChange: (e) => setNewContactName(e.target.value),
+                                    placeholder: "Display name (optional)",
+                                    className: "bg-surface-2 border-surface-3 h-12 text-base",
+                                    "data-ocid": "contacts.name.input"
+                                  }
+                                ),
+                                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                                  Button,
+                                  {
+                                    type: "button",
+                                    onClick: handleAddContact,
+                                    disabled: !newContactAddr || addContact.isPending || !actor,
+                                    className: "w-full rounded-full h-12",
+                                    style: {
+                                      background: "oklch(0.82 0.19 152)",
+                                      color: "oklch(0.10 0.01 150)"
+                                    },
+                                    "data-ocid": "contacts.add.confirm_button",
+                                    children: [
+                                      addContact.isPending ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "w-4 h-4 animate-spin mr-2" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "w-4 h-4 mr-2" }),
+                                      "Add Contact"
+                                    ]
+                                  }
+                                )
+                              ] })
+                            ]
+                          }
+                        )
+                      ]
+                    }
+                  )
                 ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "flex-1", children: contactsLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center py-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                   LoaderCircle,

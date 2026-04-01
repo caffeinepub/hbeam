@@ -35,6 +35,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Contact } from "../backend.d.ts";
+import { useActor } from "../hooks/useActor";
 import {
   useAddContact,
   useGetContacts,
@@ -628,6 +629,7 @@ export function AppView({
   onDisconnect: () => void;
   onLock: () => void;
 }) {
+  const { actor } = useActor();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>(DEMO_MESSAGES);
   const [input, setInput] = useState("");
@@ -684,12 +686,13 @@ export function AppView({
         displayName: name,
       });
       toast.success("Contact added!");
-    } catch {
-      toast.error("Failed to add contact");
+      setAddOpen(false);
+      setNewContactAddr("");
+      setNewContactName("");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to add contact");
+      // keep dialog open so user can retry
     }
-    setAddOpen(false);
-    setNewContactAddr("");
-    setNewContactName("");
   };
 
   const handleRemoveContact = async (addr: string) => {
@@ -798,7 +801,16 @@ export function AppView({
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Contacts
             </span>
-            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <Dialog
+              open={addOpen}
+              onOpenChange={(open) => {
+                setAddOpen(open);
+                if (open) {
+                  setNewContactAddr("");
+                  setNewContactName("");
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <button
                   type="button"
@@ -833,7 +845,7 @@ export function AppView({
                   <Button
                     type="button"
                     onClick={handleAddContact}
-                    disabled={!newContactAddr || addContact.isPending}
+                    disabled={!newContactAddr || addContact.isPending || !actor}
                     className="w-full rounded-full h-12"
                     style={{
                       background: "oklch(0.82 0.19 152)",
