@@ -723,6 +723,10 @@ body{
   z-index: 1;
 }
 
+.col-span-2{
+  grid-column: span 2 / span 2;
+}
+
 .col-start-2{
   grid-column-start: 2;
 }
@@ -785,14 +789,6 @@ body{
   margin-bottom: 2.5rem;
 }
 
-.mb-12{
-  margin-bottom: 3rem;
-}
-
-.mb-14{
-  margin-bottom: 3.5rem;
-}
-
 .mb-2{
   margin-bottom: 0.5rem;
 }
@@ -817,6 +813,10 @@ body{
   margin-bottom: 2rem;
 }
 
+.ml-0\.5{
+  margin-left: 0.125rem;
+}
+
 .ml-1{
   margin-left: 0.25rem;
 }
@@ -827,6 +827,10 @@ body{
 
 .ml-auto{
   margin-left: auto;
+}
+
+.mr-1{
+  margin-right: 0.25rem;
 }
 
 .mr-1\.5{
@@ -849,10 +853,6 @@ body{
   margin-top: 0.375rem;
 }
 
-.mt-10{
-  margin-top: 2.5rem;
-}
-
 .mt-2{
   margin-top: 0.5rem;
 }
@@ -867,6 +867,10 @@ body{
 
 .mt-6{
   margin-top: 1.5rem;
+}
+
+.mt-8{
+  margin-top: 2rem;
 }
 
 .mt-auto{
@@ -1154,10 +1158,6 @@ body{
   width: 1.25rem;
 }
 
-.w-60{
-  width: 15rem;
-}
-
 .w-64{
   width: 16rem;
 }
@@ -1180,6 +1180,10 @@ body{
 
 .w-\[100px\]{
   width: 100px;
+}
+
+.w-\[calc\(100vw-2rem\)\]{
+  width: calc(100vw - 2rem);
 }
 
 .w-auto{
@@ -1252,12 +1256,12 @@ body{
   max-width: 70%;
 }
 
-.max-w-\[72\%\]{
-  max-width: 72%;
-}
-
 .max-w-\[80\%\]{
   max-width: 80%;
+}
+
+.max-w-\[85\%\]{
+  max-width: 85%;
 }
 
 .max-w-\[calc\(100\%-2rem\)\]{
@@ -1435,6 +1439,10 @@ body{
   touch-action: none;
 }
 
+.touch-manipulation{
+  touch-action: manipulation;
+}
+
 .select-none{
   -webkit-user-select: none;
      -moz-user-select: none;
@@ -1461,6 +1469,10 @@ body{
 
 .auto-rows-min{
   grid-auto-rows: min-content;
+}
+
+.grid-cols-2{
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .grid-cols-\[0_1fr\]{
@@ -1519,6 +1531,10 @@ body{
   justify-content: space-between;
 }
 
+.justify-around{
+  justify-content: space-around;
+}
+
 .justify-items-start{
   justify-items: start;
 }
@@ -1535,10 +1551,6 @@ body{
   gap: 0.375rem;
 }
 
-.gap-12{
-  gap: 3rem;
-}
-
 .gap-2{
   gap: 0.5rem;
 }
@@ -1549,10 +1561,6 @@ body{
 
 .gap-4{
   gap: 1rem;
-}
-
-.gap-5{
-  gap: 1.25rem;
 }
 
 .gap-6{
@@ -1883,6 +1891,10 @@ body{
   padding: 0.25rem;
 }
 
+.p-1\.5{
+  padding: 0.375rem;
+}
+
 .p-2{
   padding: 0.5rem;
 }
@@ -1895,12 +1907,12 @@ body{
   padding: 1rem;
 }
 
-.p-6{
-  padding: 1.5rem;
+.p-5{
+  padding: 1.25rem;
 }
 
-.p-8{
-  padding: 2rem;
+.p-6{
+  padding: 1.5rem;
 }
 
 .p-\[3px\]{
@@ -1941,24 +1953,9 @@ body{
   padding-right: 1rem;
 }
 
-.px-5{
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
-}
-
 .px-6{
   padding-left: 1.5rem;
   padding-right: 1.5rem;
-}
-
-.px-7{
-  padding-left: 1.75rem;
-  padding-right: 1.75rem;
-}
-
-.px-8{
-  padding-left: 2rem;
-  padding-right: 2rem;
 }
 
 .py-0\.5{
@@ -1976,9 +1973,14 @@ body{
   padding-bottom: 0.375rem;
 }
 
-.py-12{
-  padding-top: 3rem;
-  padding-bottom: 3rem;
+.py-10{
+  padding-top: 2.5rem;
+  padding-bottom: 2.5rem;
+}
+
+.py-14{
+  padding-top: 3.5rem;
+  padding-bottom: 3.5rem;
 }
 
 .py-16{
@@ -1994,11 +1996,6 @@ body{
 .py-2\.5{
   padding-top: 0.625rem;
   padding-bottom: 0.625rem;
-}
-
-.py-20{
-  padding-top: 5rem;
-  padding-bottom: 5rem;
 }
 
 .py-3{
@@ -2028,10 +2025,6 @@ body{
 
 .pb-12{
   padding-bottom: 3rem;
-}
-
-.pb-16{
-  padding-bottom: 4rem;
 }
 
 .pb-3{
@@ -2074,12 +2067,12 @@ body{
   padding-top: 0px;
 }
 
-.pt-2{
-  padding-top: 0.5rem;
+.pt-12{
+  padding-top: 3rem;
 }
 
-.pt-20{
-  padding-top: 5rem;
+.pt-2{
+  padding-top: 0.5rem;
 }
 
 .pt-3{
@@ -2122,16 +2115,6 @@ body{
 .text-3xl{
   font-size: 1.875rem;
   line-height: 2.25rem;
-}
-
-.text-4xl{
-  font-size: 2.25rem;
-  line-height: 2.5rem;
-}
-
-.text-5xl{
-  font-size: 3rem;
-  line-height: 1;
 }
 
 .text-\[0\.8rem\]{
@@ -2204,8 +2187,8 @@ body{
   font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
 }
 
-.leading-\[1\.08\]{
-  line-height: 1.08;
+.leading-\[1\.1\]{
+  line-height: 1.1;
 }
 
 .leading-none{
@@ -3965,12 +3948,48 @@ body{
 
 @media (min-width: 640px){
 
+  .sm\:mb-10{
+    margin-bottom: 2.5rem;
+  }
+
+  .sm\:mb-12{
+    margin-bottom: 3rem;
+  }
+
+  .sm\:mb-14{
+    margin-bottom: 3.5rem;
+  }
+
+  .sm\:mb-6{
+    margin-bottom: 1.5rem;
+  }
+
+  .sm\:mb-8{
+    margin-bottom: 2rem;
+  }
+
+  .sm\:mt-10{
+    margin-top: 2.5rem;
+  }
+
   .sm\:block{
     display: block;
   }
 
+  .sm\:inline{
+    display: inline;
+  }
+
   .sm\:flex{
     display: flex;
+  }
+
+  .sm\:hidden{
+    display: none;
+  }
+
+  .sm\:max-w-\[72\%\]{
+    max-width: 72%;
   }
 
   .sm\:max-w-lg{
@@ -3993,8 +4012,79 @@ body{
     justify-content: flex-end;
   }
 
+  .sm\:gap-2{
+    gap: 0.5rem;
+  }
+
   .sm\:gap-2\.5{
     gap: 0.625rem;
+  }
+
+  .sm\:gap-3{
+    gap: 0.75rem;
+  }
+
+  .sm\:gap-4{
+    gap: 1rem;
+  }
+
+  .sm\:gap-5{
+    gap: 1.25rem;
+  }
+
+  .sm\:gap-6{
+    gap: 1.5rem;
+  }
+
+  .sm\:gap-8{
+    gap: 2rem;
+  }
+
+  .sm\:p-6{
+    padding: 1.5rem;
+  }
+
+  .sm\:p-8{
+    padding: 2rem;
+  }
+
+  .sm\:px-4{
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .sm\:px-5{
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .sm\:px-6{
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .sm\:px-7{
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
+  }
+
+  .sm\:py-12{
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+  }
+
+  .sm\:py-20{
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+
+  .sm\:py-3\.5{
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+  }
+
+  .sm\:pb-16{
+    padding-bottom: 4rem;
   }
 
   .sm\:pl-2\.5{
@@ -4005,8 +4095,31 @@ body{
     padding-right: 0.625rem;
   }
 
+  .sm\:pt-20{
+    padding-top: 5rem;
+  }
+
   .sm\:text-left{
     text-align: left;
+  }
+
+  .sm\:text-3xl{
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  .sm\:text-4xl{
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+
+  .sm\:text-lg{
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  .sm\:leading-\[1\.08\]{
+    line-height: 1.08;
   }
 
   .data-\[vaul-drawer-direction\=left\]\:sm\:max-w-sm[data-vaul-drawer-direction="left"]{
@@ -4030,6 +4143,18 @@ body{
 
   .md\:flex{
     display: flex;
+  }
+
+  .md\:hidden{
+    display: none;
+  }
+
+  .md\:w-60{
+    width: 15rem;
+  }
+
+  .md\:w-64{
+    width: 16rem;
   }
 
   .md\:w-\[var\(--radix-navigation-menu-viewport-width\)\]{
@@ -4105,6 +4230,15 @@ body{
 
   .lg\:grid-cols-5{
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .lg\:gap-12{
+    gap: 3rem;
+  }
+
+  .lg\:text-4xl{
+    font-size: 2.25rem;
+    line-height: 2.5rem;
   }
 
   .lg\:text-6xl{

@@ -83,6 +83,7 @@ const DEMO_MESSAGES: Message[] = [
 ];
 
 type ConnectTab = "generate" | "import" | "unlock";
+type MobileView = "contacts" | "chat" | "wallet";
 
 // Connect screen
 function ConnectScreen({
@@ -185,7 +186,7 @@ function ConnectScreen({
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
+      className="min-h-screen flex items-center justify-center px-4 py-8"
       style={{
         background:
           "radial-gradient(ellipse at 50% 30%, oklch(0.16 0.015 180 / 0.35) 0%, oklch(0.11 0.012 240) 65%)",
@@ -195,11 +196,11 @@ function ConnectScreen({
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="glass-card rounded-2xl p-8 w-full max-w-md shadow-card"
+        className="glass-card rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-card"
       >
         <div className="flex items-center gap-3 mb-6">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "oklch(0.82 0.19 152)" }}
           >
             <span
@@ -227,7 +228,7 @@ function ConnectScreen({
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-xs font-medium transition-all"
               style={{
                 background:
                   tab === t.id ? "oklch(0.82 0.19 152 / 0.15)" : "transparent",
@@ -243,7 +244,7 @@ function ConnectScreen({
               data-ocid={`connect.${t.id}.tab`}
             >
               {t.icon}
-              {t.label}
+              <span className="hidden sm:inline">{t.label}</span>
             </button>
           ))}
         </div>
@@ -271,7 +272,7 @@ function ConnectScreen({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="bg-surface-2 border-surface-3 h-11"
+                className="bg-surface-2 border-surface-3 h-12 text-base"
                 onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
                 data-ocid="connect.unlock.input"
               />
@@ -279,7 +280,7 @@ function ConnectScreen({
                 type="button"
                 onClick={handleUnlock}
                 disabled={loading || !password}
-                className="w-full h-11 rounded-full font-semibold"
+                className="w-full h-12 rounded-full font-semibold"
                 style={{
                   background: "oklch(0.82 0.19 152)",
                   color: "oklch(0.10 0.01 150)",
@@ -313,7 +314,7 @@ function ConnectScreen({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Choose a strong password"
-                className="bg-surface-2 border-surface-3 h-11"
+                className="bg-surface-2 border-surface-3 h-12 text-base"
                 onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
                 data-ocid="connect.generate.input"
               />
@@ -321,7 +322,7 @@ function ConnectScreen({
                 type="button"
                 onClick={handleGenerate}
                 disabled={loading || !password}
-                className="w-full h-11 rounded-full font-semibold"
+                className="w-full h-12 rounded-full font-semibold"
                 style={{
                   background: "oklch(0.82 0.19 152)",
                   color: "oklch(0.10 0.01 150)",
@@ -350,7 +351,7 @@ function ConnectScreen({
                 value={importKey}
                 onChange={(e) => setImportKey(e.target.value)}
                 placeholder="Private key (64 hex chars)"
-                className="bg-surface-2 border-surface-3 h-11 font-mono text-xs"
+                className="bg-surface-2 border-surface-3 h-12 font-mono text-xs"
                 data-ocid="connect.import.key_input"
               />
               <Input
@@ -358,7 +359,7 @@ function ConnectScreen({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password to encrypt key"
-                className="bg-surface-2 border-surface-3 h-11"
+                className="bg-surface-2 border-surface-3 h-12 text-base"
                 onKeyDown={(e) => e.key === "Enter" && handleImport()}
                 data-ocid="connect.import.input"
               />
@@ -366,7 +367,7 @@ function ConnectScreen({
                 type="button"
                 onClick={handleImport}
                 disabled={loading || !importKey || !password}
-                className="w-full h-11 rounded-full font-semibold"
+                className="w-full h-12 rounded-full font-semibold"
                 style={{
                   background: "oklch(0.82 0.19 152)",
                   color: "oklch(0.10 0.01 150)",
@@ -471,7 +472,7 @@ function SendHTNModal({
             type="button"
             variant="outline"
             size="sm"
-            className="flex-1 rounded-full text-xs border-surface-3"
+            className="flex-1 rounded-full text-xs border-surface-3 h-11"
             onClick={() => {
               navigator.clipboard.writeText(txId);
               toast.success("TX ID copied!");
@@ -484,7 +485,7 @@ function SendHTNModal({
           <Button
             type="button"
             size="sm"
-            className="flex-1 rounded-full text-xs"
+            className="flex-1 rounded-full text-xs h-11"
             style={{
               background: "oklch(0.82 0.19 152)",
               color: "oklch(0.10 0.01 150)",
@@ -504,7 +505,7 @@ function SendHTNModal({
           type="button"
           variant="ghost"
           size="sm"
-          className="w-full text-xs text-muted-foreground"
+          className="w-full text-xs text-muted-foreground h-11"
           onClick={onClose}
           data-ocid="send_htn.close_button"
         >
@@ -562,7 +563,7 @@ function SendHTNModal({
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
           placeholder="hoosat:q..."
-          className="bg-surface-2 border-surface-3 text-sm"
+          className="bg-surface-2 border-surface-3 text-sm h-12"
           data-ocid="send_htn.recipient.input"
         />
       </div>
@@ -580,7 +581,7 @@ function SendHTNModal({
           placeholder="0.00"
           type="number"
           min="0"
-          className="bg-surface-2 border-surface-3 text-sm"
+          className="bg-surface-2 border-surface-3 text-sm h-12"
           data-ocid="send_htn.amount.input"
         />
       </div>
@@ -601,7 +602,7 @@ function SendHTNModal({
         type="button"
         onClick={handleSend}
         disabled={sending || !amount}
-        className="w-full h-11 rounded-full font-semibold"
+        className="w-full h-12 rounded-full font-semibold"
         style={{
           background: "oklch(0.82 0.19 152)",
           color: "oklch(0.10 0.01 150)",
@@ -634,6 +635,7 @@ export function AppView({
   const [newContactAddr, setNewContactAddr] = useState("");
   const [newContactName, setNewContactName] = useState("");
   const [sendOpen, setSendOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileView>("contacts");
 
   const { data: contacts = [], isLoading: contactsLoading } =
     useGetContacts(myAddress);
@@ -707,21 +709,26 @@ export function AppView({
     });
   };
 
+  const selectContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setMobileView("chat");
+  };
+
   return (
     <div
-      className="h-screen flex flex-col"
+      className="h-screen flex flex-col overflow-hidden"
       style={{ background: "oklch(0.11 0.012 240)" }}
     >
       {/* Top bar */}
       <div
-        className="flex items-center justify-between px-4 py-3 border-b border-surface-3 flex-shrink-0"
+        className="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-surface-3 flex-shrink-0"
         style={{ background: "oklch(0.13 0.011 240)" }}
       >
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onDisconnect}
-            className="text-muted-foreground hover:text-foreground transition-colors mr-2"
+            className="text-muted-foreground hover:text-foreground transition-colors mr-1"
             data-ocid="app.back.button"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -739,9 +746,9 @@ export function AppView({
           </div>
           <span className="font-bold text-sm">HBeam</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <span
-            className="text-xs text-muted-foreground max-w-[140px] truncate font-mono"
+            className="text-xs text-muted-foreground hidden sm:block max-w-[140px] truncate font-mono"
             title={myAddress}
           >
             {myAddress.slice(0, 20)}...
@@ -752,7 +759,7 @@ export function AppView({
               navigator.clipboard.writeText(myAddress);
               toast.success("Address copied!");
             }}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors p-1"
             data-ocid="app.copy_address.button"
           >
             <Copy className="w-3.5 h-3.5" />
@@ -761,7 +768,7 @@ export function AppView({
             type="button"
             onClick={onLock}
             title={privateKey ? "Lock wallet" : "Wallet locked"}
-            className="transition-colors ml-1"
+            className="transition-colors ml-0.5 p-1"
             style={{
               color: privateKey
                 ? "oklch(0.55 0.02 240)"
@@ -778,11 +785,13 @@ export function AppView({
         </div>
       </div>
 
-      {/* Main 3-column */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left: Contacts */}
+      {/* Main 3-column (responsive) */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Left: Contacts — full width on mobile when mobileView=contacts, sidebar on desktop */}
         <div
-          className="w-60 border-r border-surface-3 flex flex-col flex-shrink-0"
+          className={`${
+            mobileView === "contacts" ? "flex" : "hidden"
+          } md:flex w-full md:w-60 border-r border-surface-3 flex-col flex-shrink-0`}
           style={{ background: "oklch(0.13 0.011 240)" }}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-surface-3">
@@ -793,14 +802,14 @@ export function AppView({
               <DialogTrigger asChild>
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-mint transition-colors"
+                  className="text-muted-foreground hover:text-mint transition-colors p-1"
                   data-ocid="contacts.add.open_modal_button"
                 >
                   <UserPlus className="w-4 h-4" />
                 </button>
               </DialogTrigger>
               <DialogContent
-                className="glass-card border-surface-3"
+                className="glass-card border-surface-3 w-[calc(100vw-2rem)] max-w-md mx-auto"
                 data-ocid="contacts.add.dialog"
               >
                 <DialogHeader>
@@ -811,21 +820,21 @@ export function AppView({
                     value={newContactAddr}
                     onChange={(e) => setNewContactAddr(e.target.value)}
                     placeholder="hoosat:q..."
-                    className="bg-surface-2 border-surface-3"
+                    className="bg-surface-2 border-surface-3 h-12 text-base"
                     data-ocid="contacts.add.input"
                   />
                   <Input
                     value={newContactName}
                     onChange={(e) => setNewContactName(e.target.value)}
                     placeholder="Display name (optional)"
-                    className="bg-surface-2 border-surface-3"
+                    className="bg-surface-2 border-surface-3 h-12 text-base"
                     data-ocid="contacts.name.input"
                   />
                   <Button
                     type="button"
                     onClick={handleAddContact}
                     disabled={!newContactAddr || addContact.isPending}
-                    className="w-full rounded-full"
+                    className="w-full rounded-full h-12"
                     style={{
                       background: "oklch(0.82 0.19 152)",
                       color: "oklch(0.10 0.01 150)",
@@ -866,16 +875,16 @@ export function AppView({
                     <button
                       key={contact.address}
                       type="button"
-                      className={`group flex items-center gap-2 px-4 py-3 w-full cursor-pointer transition-colors ${
+                      className={`group flex items-center gap-2 px-4 py-3.5 w-full cursor-pointer transition-colors ${
                         selectedContact?.address === contact.address
                           ? "bg-mint/10 border-r-2 border-mint"
                           : "hover:bg-surface-2"
                       }`}
-                      onClick={() => setSelectedContact(contact)}
+                      onClick={() => selectContact(contact)}
                       data-ocid={`contacts.item.${i + 1}`}
                     >
                       <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                         style={{
                           background:
                             selectedContact?.address === contact.address
@@ -909,7 +918,7 @@ export function AppView({
                           e.stopPropagation();
                           handleRemoveContact(contact.address);
                         }}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 touch-manipulation"
                         data-ocid={`contacts.delete_button.${i + 1}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -922,15 +931,28 @@ export function AppView({
           </ScrollArea>
         </div>
 
-        {/* Middle: Chat */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Middle: Chat — full width on mobile when mobileView=chat */}
+        <div
+          className={`${
+            mobileView === "chat" ? "flex" : "hidden"
+          } md:flex flex-1 flex-col overflow-hidden min-w-0`}
+        >
           {selectedContact ? (
             <>
               {/* Chat header */}
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-3 flex-shrink-0">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between px-3 sm:px-5 py-3.5 border-b border-surface-3 flex-shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  {/* Back to contacts on mobile */}
+                  <button
+                    type="button"
+                    className="md:hidden text-muted-foreground hover:text-foreground transition-colors p-1 flex-shrink-0"
+                    onClick={() => setMobileView("contacts")}
+                    data-ocid="chat.back.button"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                     style={{
                       background: "oklch(0.82 0.19 152 / 0.2)",
                       color: "oklch(0.82 0.19 152)",
@@ -938,11 +960,11 @@ export function AppView({
                   >
                     {selectedContact.displayName[0]}
                   </div>
-                  <div>
-                    <div className="font-semibold text-sm">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm truncate">
                       {selectedContact.displayName}
                     </div>
-                    <div className="text-[11px] text-muted-foreground font-mono">
+                    <div className="text-[11px] text-muted-foreground font-mono truncate">
                       {selectedContact.address.slice(0, 22)}...
                     </div>
                   </div>
@@ -952,7 +974,7 @@ export function AppView({
                     <Button
                       type="button"
                       size="sm"
-                      className="rounded-full text-xs font-semibold h-8 px-4"
+                      className="rounded-full text-xs font-semibold h-9 px-3 flex-shrink-0"
                       style={{
                         background: "oklch(0.82 0.19 152 / 0.15)",
                         color: "oklch(0.82 0.19 152)",
@@ -960,12 +982,13 @@ export function AppView({
                       }}
                       data-ocid="chat.send_htn.open_modal_button"
                     >
-                      <Wallet className="w-3.5 h-3.5 mr-1.5" />
-                      Send HTN
+                      <Wallet className="w-3.5 h-3.5 mr-1" />
+                      <span className="hidden sm:inline">Send HTN</span>
+                      <span className="sm:hidden">Send</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent
-                    className="glass-card border-surface-3"
+                    className="glass-card border-surface-3 w-[calc(100vw-2rem)] max-w-md mx-auto"
                     data-ocid="chat.send_htn.dialog"
                   >
                     <DialogHeader>
@@ -982,7 +1005,7 @@ export function AppView({
               </div>
 
               {/* Messages */}
-              <ScrollArea className="flex-1 px-5 py-4">
+              <ScrollArea className="flex-1 px-3 sm:px-5 py-4">
                 <AnimatePresence initial={false}>
                   {conversationMessages.length === 0 ? (
                     <motion.div
@@ -1004,10 +1027,12 @@ export function AppView({
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}
+                          className={`flex ${
+                            msg.from === "me" ? "justify-end" : "justify-start"
+                          }`}
                           data-ocid={`chat.item.${i + 1}`}
                         >
-                          <div className="max-w-[72%]">
+                          <div className="max-w-[85%] sm:max-w-[72%]">
                             <div
                               className="rounded-2xl px-4 py-2.5 text-sm"
                               style={{
@@ -1028,7 +1053,9 @@ export function AppView({
                               {msg.content}
                             </div>
                             <div
-                              className={`text-[10px] text-muted-foreground mt-1 ${msg.from === "me" ? "text-right" : "text-left"}`}
+                              className={`text-[10px] text-muted-foreground mt-1 ${
+                                msg.from === "me" ? "text-right" : "text-left"
+                              }`}
                             >
                               {formatTime(msg.timestamp)}
                             </div>
@@ -1041,17 +1068,17 @@ export function AppView({
               </ScrollArea>
 
               {/* Message input */}
-              <div className="px-5 py-3.5 border-t border-surface-3 flex-shrink-0 flex items-center gap-3">
+              <div className="px-3 sm:px-5 py-3 border-t border-surface-3 flex-shrink-0 flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-mint transition-colors"
+                  className="text-muted-foreground hover:text-mint transition-colors p-1.5 touch-manipulation"
                   data-ocid="chat.attach.button"
                 >
                   <Paperclip className="w-5 h-5" />
                 </button>
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-mint transition-colors"
+                  className="text-muted-foreground hover:text-mint transition-colors p-1.5 touch-manipulation"
                   data-ocid="chat.voice.button"
                 >
                   <Mic className="w-5 h-5" />
@@ -1060,7 +1087,8 @@ export function AppView({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 bg-surface-2 border-surface-3 rounded-full h-10 text-sm"
+                  className="flex-1 bg-surface-2 border-surface-3 rounded-full h-11 text-sm"
+                  style={{ fontSize: "16px" }}
                   onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                   data-ocid="chat.message.input"
                 />
@@ -1068,7 +1096,7 @@ export function AppView({
                   type="button"
                   onClick={sendMessage}
                   disabled={!input.trim()}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-40"
+                  className="w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-40 flex-shrink-0 touch-manipulation"
                   style={{
                     background: "oklch(0.82 0.19 152)",
                     color: "oklch(0.10 0.01 150)",
@@ -1081,7 +1109,7 @@ export function AppView({
             </>
           ) : (
             <div
-              className="flex-1 flex flex-col items-center justify-center text-center px-8"
+              className="flex-1 flex flex-col items-center justify-center text-center px-6"
               data-ocid="chat.empty_state"
             >
               <motion.div
@@ -1099,16 +1127,25 @@ export function AppView({
                   Select a conversation
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-xs">
-                  Choose a contact from the left to start chatting or send HTN.
+                  Choose a contact from the list to start chatting or send HTN.
                 </p>
+                <button
+                  type="button"
+                  className="mt-4 md:hidden text-sm text-mint underline underline-offset-2"
+                  onClick={() => setMobileView("contacts")}
+                >
+                  View contacts
+                </button>
               </motion.div>
             </div>
           )}
         </div>
 
-        {/* Right: Wallet */}
+        {/* Right: Wallet — full width on mobile when mobileView=wallet, sidebar on desktop */}
         <div
-          className="w-64 border-l border-surface-3 flex flex-col flex-shrink-0"
+          className={`${
+            mobileView === "wallet" ? "flex" : "hidden"
+          } md:flex w-full md:w-64 border-l border-surface-3 flex-col flex-shrink-0`}
           style={{ background: "oklch(0.13 0.011 240)" }}
         >
           <div className="px-4 py-3 border-b border-surface-3 flex items-center justify-between">
@@ -1125,119 +1162,163 @@ export function AppView({
             )}
           </div>
 
-          <div className="p-4 space-y-4">
-            {/* Balance card */}
-            <div
-              className="rounded-2xl p-4"
-              style={{
-                background: "oklch(0.82 0.19 152 / 0.07)",
-                border: "1px solid oklch(0.82 0.19 152 / 0.2)",
-              }}
-            >
-              <div className="text-xs text-muted-foreground mb-1">
-                HTN Balance
-              </div>
-              {balanceLoading ? (
-                <div
-                  className="flex items-center gap-2"
-                  data-ocid="wallet.loading_state"
-                >
-                  <Loader2 className="w-4 h-4 animate-spin text-mint" />
-                  <span className="text-sm text-muted-foreground">
-                    Loading...
-                  </span>
-                </div>
-              ) : (
-                <div className="text-3xl font-extrabold text-mint">
-                  {balance !== null && balance !== undefined
-                    ? balance.toFixed(4)
-                    : "—"}
-                </div>
-              )}
-              <div className="text-xs text-muted-foreground mt-0.5">HTN</div>
-            </div>
-
-            {/* Address */}
-            <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">Your address</div>
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-4">
+              {/* Balance card */}
               <div
-                className="rounded-xl px-3 py-2 text-[11px] font-mono text-muted-foreground break-all leading-relaxed"
-                style={{ background: "oklch(0.18 0.013 240)" }}
-              >
-                {myAddress}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(myAddress);
-                  toast.success("Address copied!");
+                className="rounded-2xl p-4"
+                style={{
+                  background: "oklch(0.82 0.19 152 / 0.07)",
+                  border: "1px solid oklch(0.82 0.19 152 / 0.2)",
                 }}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                data-ocid="wallet.copy_address.button"
               >
-                <Copy className="w-3 h-3" />
-                Copy address
-              </button>
-            </div>
+                <div className="text-xs text-muted-foreground mb-1">
+                  HTN Balance
+                </div>
+                {balanceLoading ? (
+                  <div
+                    className="flex items-center gap-2"
+                    data-ocid="wallet.loading_state"
+                  >
+                    <Loader2 className="w-4 h-4 animate-spin text-mint" />
+                    <span className="text-sm text-muted-foreground">
+                      Loading...
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-3xl font-extrabold text-mint">
+                    {balance !== null && balance !== undefined
+                      ? balance.toFixed(4)
+                      : "—"}
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground mt-0.5">HTN</div>
+              </div>
 
-            {/* Send HTN */}
-            <Dialog open={sendOpen} onOpenChange={setSendOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  type="button"
-                  className="w-full rounded-full font-semibold"
-                  style={{
-                    background: "oklch(0.82 0.19 152)",
-                    color: "oklch(0.10 0.01 150)",
-                  }}
-                  data-ocid="wallet.send_htn.open_modal_button"
+              {/* Address */}
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">
+                  Your address
+                </div>
+                <div
+                  className="rounded-xl px-3 py-2 text-[11px] font-mono text-muted-foreground break-all leading-relaxed"
+                  style={{ background: "oklch(0.18 0.013 240)" }}
                 >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Send HTN
-                </Button>
-              </DialogTrigger>
-              <DialogContent
-                className="glass-card border-surface-3"
-                data-ocid="wallet.send_htn.dialog"
-              >
-                <DialogHeader>
-                  <DialogTitle>Send HTN</DialogTitle>
-                </DialogHeader>
-                <SendHTNModal
-                  myAddress={myAddress}
-                  recipientAddress={selectedContact?.address ?? ""}
-                  privateKey={privateKey}
-                  onClose={() => setSendOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
+                  {myAddress}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(myAddress);
+                    toast.success("Address copied!");
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 touch-manipulation"
+                  data-ocid="wallet.copy_address.button"
+                >
+                  <Copy className="w-3 h-3" />
+                  Copy address
+                </button>
+              </div>
 
-            {/* Stats */}
-            <div className="space-y-2">
-              <div
-                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs"
-                style={{ background: "oklch(0.18 0.013 240)" }}
-              >
-                <span className="text-muted-foreground">Network</span>
-                <span className="text-mint font-medium">Hoosat</span>
-              </div>
-              <div
-                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs"
-                style={{ background: "oklch(0.18 0.013 240)" }}
-              >
-                <span className="text-muted-foreground">Block time</span>
-                <span className="text-foreground">~1 second</span>
-              </div>
-              <div
-                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs"
-                style={{ background: "oklch(0.18 0.013 240)" }}
-              >
-                <span className="text-muted-foreground">Tx fee</span>
-                <span className="text-foreground">0.00001 HTN</span>
+              {/* Send HTN */}
+              <Dialog open={sendOpen} onOpenChange={setSendOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    className="w-full rounded-full font-semibold h-12"
+                    style={{
+                      background: "oklch(0.82 0.19 152)",
+                      color: "oklch(0.10 0.01 150)",
+                    }}
+                    data-ocid="wallet.send_htn.open_modal_button"
+                  >
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Send HTN
+                  </Button>
+                </DialogTrigger>
+                <DialogContent
+                  className="glass-card border-surface-3 w-[calc(100vw-2rem)] max-w-md mx-auto"
+                  data-ocid="wallet.send_htn.dialog"
+                >
+                  <DialogHeader>
+                    <DialogTitle>Send HTN</DialogTitle>
+                  </DialogHeader>
+                  <SendHTNModal
+                    myAddress={myAddress}
+                    recipientAddress={selectedContact?.address ?? ""}
+                    privateKey={privateKey}
+                    onClose={() => setSendOpen(false)}
+                  />
+                </DialogContent>
+              </Dialog>
+
+              {/* Stats */}
+              <div className="space-y-2">
+                <div
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs"
+                  style={{ background: "oklch(0.18 0.013 240)" }}
+                >
+                  <span className="text-muted-foreground">Network</span>
+                  <span className="text-mint font-medium">Hoosat</span>
+                </div>
+                <div
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs"
+                  style={{ background: "oklch(0.18 0.013 240)" }}
+                >
+                  <span className="text-muted-foreground">Block time</span>
+                  <span className="text-foreground">~1 second</span>
+                </div>
+                <div
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs"
+                  style={{ background: "oklch(0.18 0.013 240)" }}
+                >
+                  <span className="text-muted-foreground">Tx fee</span>
+                  <span className="text-foreground">0.00001 HTN</span>
+                </div>
               </div>
             </div>
-          </div>
+          </ScrollArea>
         </div>
+      </div>
+
+      {/* Mobile bottom navigation */}
+      <div
+        className="md:hidden flex items-center justify-around border-t border-surface-3 flex-shrink-0 safe-area-inset-bottom"
+        style={{ background: "oklch(0.13 0.011 240)" }}
+      >
+        <button
+          type="button"
+          onClick={() => setMobileView("contacts")}
+          className={`flex flex-col items-center gap-1 py-3 px-6 transition-colors touch-manipulation ${
+            mobileView === "contacts" ? "text-mint" : "text-muted-foreground"
+          }`}
+          data-ocid="nav.contacts.tab"
+        >
+          <UserPlus className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Contacts</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView("chat")}
+          className={`flex flex-col items-center gap-1 py-3 px-6 transition-colors touch-manipulation ${
+            mobileView === "chat" ? "text-mint" : "text-muted-foreground"
+          }`}
+          data-ocid="nav.chat.tab"
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Chat</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView("wallet")}
+          className={`flex flex-col items-center gap-1 py-3 px-6 transition-colors touch-manipulation ${
+            mobileView === "wallet" ? "text-mint" : "text-muted-foreground"
+          }`}
+          data-ocid="nav.wallet.tab"
+        >
+          <Wallet className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Wallet</span>
+        </button>
       </div>
     </div>
   );

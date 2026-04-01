@@ -29,7 +29,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     >
       {/* Header */}
       <header className="relative z-10 border-b border-surface-3">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Brand */}
           <div className="flex items-center gap-2">
             <div
@@ -67,7 +67,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           <button
             type="button"
             onClick={onGetStarted}
-            className="rounded-full px-5 py-2 text-sm font-semibold transition-all hover:opacity-90 mint-glow"
+            className="rounded-full px-4 sm:px-5 py-2 text-sm font-semibold transition-all hover:opacity-90 mint-glow"
             style={{
               background: "oklch(0.82 0.19 152)",
               color: "oklch(0.10 0.01 150)",
@@ -83,12 +83,12 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         {/* Hero */}
         <section
           id="features"
-          className="relative pt-20 pb-12 px-6 overflow-hidden"
+          className="relative pt-12 sm:pt-20 pb-12 px-4 sm:px-6 overflow-hidden"
         >
           <NetworkBackground />
 
           <div className="relative z-10 max-w-7xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
               {/* Left copy */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
@@ -96,7 +96,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 transition={{ duration: 0.7, ease: "easeOut" }}
               >
                 <div
-                  className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium mb-6"
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium mb-5 sm:mb-6"
                   style={{
                     background: "oklch(0.82 0.19 152 / 0.1)",
                     border: "1px solid oklch(0.82 0.19 152 / 0.25)",
@@ -107,23 +107,23 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   Powered by Hoosat Blockchain
                 </div>
 
-                <h1 className="text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight mb-6">
+                <h1 className="text-3xl sm:text-4xl lg:text-6xl font-extrabold leading-[1.1] sm:leading-[1.08] tracking-tight mb-4 sm:mb-6">
                   Private Messaging
                   <br />
                   on <span className="text-mint">Hoosat</span>
                 </h1>
 
-                <p className="text-lg text-muted-foreground mb-8 max-w-md leading-relaxed">
+                <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 max-w-md leading-relaxed">
                   Send encrypted messages, files, voice notes, and HTN payments
                   — all in one blazing-fast app built on Hoosat&apos;s 1-second
                   block chain.
                 </p>
 
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                   <button
                     type="button"
                     onClick={onGetStarted}
-                    className="rounded-full px-7 py-3.5 font-semibold text-base transition-all hover:opacity-90 mint-glow"
+                    className="rounded-full px-6 sm:px-7 py-3 sm:py-3.5 font-semibold text-base transition-all hover:opacity-90 mint-glow"
                     style={{
                       background: "oklch(0.82 0.19 152)",
                       color: "oklch(0.10 0.01 150)",
@@ -144,7 +144,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   </a>
                 </div>
 
-                <div className="mt-10 flex items-center gap-6 text-sm text-muted-foreground">
+                <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <Zap className="w-4 h-4 text-mint" />
                     <span>~1s blocks</span>
@@ -165,7 +165,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                className="animate-float"
+                className="animate-float hidden sm:block"
               >
                 <div
                   className="rounded-3xl p-1"
@@ -239,7 +239,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         </section>
 
         {/* Full-width app mockup */}
-        <section className="px-6 pb-16">
+        <section className="px-4 sm:px-6 pb-12 sm:pb-16">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -252,25 +252,25 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         </section>
 
         {/* Features grid */}
-        <section id="security" className="px-6 py-20">
+        <section id="security" className="px-4 sm:px-6 py-14 sm:py-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="max-w-7xl mx-auto text-center mb-14"
+            className="max-w-7xl mx-auto text-center mb-10 sm:mb-14"
           >
-            <h2 className="text-4xl font-extrabold mb-4">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4">
               Everything you need,{" "}
               <span className="text-mint">nothing you don&apos;t</span>
             </h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+            <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto">
               Built for privacy-first communication backed by Hoosat&apos;s
               blazing fast blockchain.
             </p>
           </motion.div>
 
-          <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {[
               {
                 icon: MessageSquare,
@@ -309,7 +309,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.07 }}
-                className="glass-card rounded-2xl p-6 hover:border-mint/30 transition-colors"
+                className="glass-card rounded-2xl p-5 sm:p-6 hover:border-mint/30 transition-colors"
                 data-ocid={`features.item.${i + 1}`}
               >
                 <div
@@ -333,7 +333,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         {/* Send Payment showcase */}
         <section
           id="wallet"
-          className="px-6 py-20 relative"
+          className="px-4 sm:px-6 py-14 sm:py-20 relative"
           style={{
             background:
               "radial-gradient(ellipse at 50% 50%, oklch(0.16 0.015 180 / 0.2) 0%, transparent 70%)",
@@ -344,12 +344,12 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="max-w-7xl mx-auto text-center mb-12"
+            className="max-w-7xl mx-auto text-center mb-10 sm:mb-12"
           >
-            <h2 className="text-4xl font-extrabold mb-4">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-4">
               Send HTN <span className="text-mint">in seconds</span>
             </h2>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground text-base sm:text-lg">
               Integrated wallet — pay contacts without leaving the conversation.
             </p>
           </motion.div>
@@ -377,11 +377,14 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       </main>
 
       {/* Footer */}
-      <footer id="support" className="border-t border-surface-3 px-6 py-12">
+      <footer
+        id="support"
+        className="border-t border-surface-3 px-4 sm:px-6 py-10 sm:py-12"
+      >
         <div className="max-w-7xl mx-auto">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 mb-8 sm:mb-10">
             {/* Brand */}
-            <div className="lg:col-span-2">
+            <div className="col-span-2 lg:col-span-2">
               <div className="flex items-center gap-2 mb-3">
                 <div
                   className="w-7 h-7 rounded-lg flex items-center justify-center"
@@ -453,7 +456,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           </div>
 
           <div className="border-t border-surface-3 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground text-center sm:text-left">
               © {new Date().getFullYear()}. Built with ❤️ using{" "}
               <a
                 href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
