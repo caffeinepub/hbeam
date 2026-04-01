@@ -8,16 +8,22 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+// @ts-ignore
+import { HoosatTxBuilder, HoosatUtils, HoosatWebClient } from "hoosat-sdk-web";
 import {
   ArrowLeft,
   Copy,
+  Download,
+  KeyRound,
   Loader2,
+  Lock,
   MessageSquare,
   Mic,
   Paperclip,
   Plus,
   Send,
   Trash2,
+  Unlock,
   UserPlus,
   Wallet,
 } from "lucide-react";
@@ -32,6 +38,7 @@ import {
   useRegisterWallet,
   useRemoveContact,
 } from "../hooks/useQueries";
+import { useWallet } from "../hooks/useWallet";
 
 // Local message type for demo
 interface Message {
@@ -71,25 +78,106 @@ const DEMO_MESSAGES: Message[] = [
   },
 ];
 
+type ConnectTab = "generate" | "import" | "unlock";
+
 // Connect screen
-function ConnectScreen({ onConnect }: { onConnect: (addr: string) => void }) {
-  const [address, setAddress] = useState("");
+function ConnectScreen({
+  onConnect,
+  wallet,
+}: {
+  onConnect: (addr: string) => void;
+  wallet: ReturnType<typeof useWallet>;
+}) {
+  const hasStored = wallet.hasStoredWallet();
+  const [tab, setTab] = useState<ConnectTab>(hasStored ? "unlock" : "generate");
+  const [password, setPassword] = useState("");
+  const [importKey, setImportKey] = useState("");
+  const [loading, setLoading] = useState(false);
   const registerWallet = useRegisterWallet();
 
-  const handleConnect = async () => {
-    if (!address.startsWith("hoosat:") && !address.startsWith("kaspa:")) {
-      toast.error("Please enter a valid Hoosat address (hoosat:q...)");
+  const connectWithAddress = async (addr: string) => {
+    try {
+      await registerWallet.mutateAsync(addr);
+    } catch {
+      // allow local usage
+    }
+    onConnect(addr);
+    toast.success("Wallet connected!");
+  };
+
+  const handleGenerate = async () => {
+    if (!password) {
+      toast.error("Enter a password to secure your wallet");
       return;
     }
+    setLoading(true);
     try {
-      await registerWallet.mutateAsync(address);
-      onConnect(address);
-      toast.success("Wallet connected!");
-    } catch {
-      // Still allow local usage even if canister fails
-      onConnect(address);
+      const addr = await wallet.generateWallet(password);
+      await connectWithAddress(addr);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to generate wallet");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleImport = async () => {
+    if (!importKey.trim()) {
+      toast.error("Enter a private key");
+      return;
+    }
+    if (!password) {
+      toast.error("Enter a password to encrypt your wallet");
+      return;
+    }
+    setLoading(true);
+    try {
+      const addr = await wallet.importWallet(importKey.trim(), password);
+      await connectWithAddress(addr);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Invalid private key");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnlock = async () => {
+    if (!password) {
+      toast.error("Enter your password");
+      return;
+    }
+    setLoading(true);
+    try {
+      const addr = await wallet.unlockWallet(password);
+      await connectWithAddress(addr);
+    } catch {
+      toast.error("Wrong password or corrupted wallet");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tabs: { id: ConnectTab; label: string; icon: React.ReactNode }[] = [
+    ...(hasStored
+      ? [
+          {
+            id: "unlock" as ConnectTab,
+            label: "Unlock",
+            icon: <Unlock className="w-3.5 h-3.5" />,
+          },
+        ]
+      : []),
+    {
+      id: "generate",
+      label: "Generate",
+      icon: <KeyRound className="w-3.5 h-3.5" />,
+    },
+    {
+      id: "import",
+      label: "Import",
+      icon: <Download className="w-3.5 h-3.5" />,
+    },
+  ];
 
   return (
     <div
@@ -120,42 +208,177 @@ function ConnectScreen({ onConnect }: { onConnect: (addr: string) => void }) {
           <div>
             <h1 className="text-xl font-bold">HBeam</h1>
             <p className="text-xs text-muted-foreground">
-              Connect your Hoosat wallet
+              Hoosat wallet &amp; messenger
             </p>
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-5">
-          Enter your Hoosat address to access your messages and wallet.
-        </p>
-
-        <div className="space-y-3">
-          <Input
-            id="hoosat-address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="hoosat:q..."
-            className="bg-surface-2 border-surface-3 text-foreground placeholder:text-muted-foreground h-11"
-            onKeyDown={(e) => e.key === "Enter" && handleConnect()}
-            data-ocid="connect.input"
-          />
-          <Button
-            type="button"
-            onClick={handleConnect}
-            disabled={!address || registerWallet.isPending}
-            className="w-full h-11 rounded-full font-semibold text-sm mint-glow"
-            style={{
-              background: address ? "oklch(0.82 0.19 152)" : undefined,
-              color: address ? "oklch(0.10 0.01 150)" : undefined,
-            }}
-            data-ocid="connect.submit_button"
-          >
-            {registerWallet.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : null}
-            Connect Wallet
-          </Button>
+        {/* Tabs */}
+        <div
+          className="flex gap-1 rounded-xl p-1 mb-5"
+          style={{ background: "oklch(0.16 0.014 240)" }}
+        >
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all"
+              style={{
+                background:
+                  tab === t.id ? "oklch(0.82 0.19 152 / 0.15)" : "transparent",
+                color:
+                  tab === t.id
+                    ? "oklch(0.82 0.19 152)"
+                    : "oklch(0.55 0.02 240)",
+                border:
+                  tab === t.id
+                    ? "1px solid oklch(0.82 0.19 152 / 0.3)"
+                    : "1px solid transparent",
+              }}
+              data-ocid={`connect.${t.id}.tab`}
+            >
+              {t.icon}
+              {t.label}
+            </button>
+          ))}
         </div>
+
+        <AnimatePresence mode="wait">
+          {tab === "unlock" && hasStored && (
+            <motion.div
+              key="unlock"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-3"
+            >
+              <div
+                className="rounded-xl px-3 py-2.5 text-xs font-mono text-muted-foreground break-all"
+                style={{
+                  background: "oklch(0.18 0.013 240)",
+                  border: "1px solid oklch(0.22 0.016 240)",
+                }}
+              >
+                {wallet.storedAddress ?? "Stored wallet"}
+              </div>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="bg-surface-2 border-surface-3 h-11"
+                onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
+                data-ocid="connect.unlock.input"
+              />
+              <Button
+                type="button"
+                onClick={handleUnlock}
+                disabled={loading || !password}
+                className="w-full h-11 rounded-full font-semibold"
+                style={{
+                  background: "oklch(0.82 0.19 152)",
+                  color: "oklch(0.10 0.01 150)",
+                }}
+                data-ocid="connect.unlock.submit_button"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Unlock className="w-4 h-4 mr-2" />
+                )}
+                Unlock Wallet
+              </Button>
+            </motion.div>
+          )}
+
+          {tab === "generate" && (
+            <motion.div
+              key="generate"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-3"
+            >
+              <p className="text-xs text-muted-foreground">
+                Generate a new Hoosat wallet. A fresh keypair will be created
+                and your private key encrypted with your password.
+              </p>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Choose a strong password"
+                className="bg-surface-2 border-surface-3 h-11"
+                onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+                data-ocid="connect.generate.input"
+              />
+              <Button
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading || !password}
+                className="w-full h-11 rounded-full font-semibold"
+                style={{
+                  background: "oklch(0.82 0.19 152)",
+                  color: "oklch(0.10 0.01 150)",
+                }}
+                data-ocid="connect.generate.submit_button"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <KeyRound className="w-4 h-4 mr-2" />
+                )}
+                Generate &amp; Connect
+              </Button>
+            </motion.div>
+          )}
+
+          {tab === "import" && (
+            <motion.div
+              key="import"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              className="space-y-3"
+            >
+              <Input
+                value={importKey}
+                onChange={(e) => setImportKey(e.target.value)}
+                placeholder="Private key (64 hex chars)"
+                className="bg-surface-2 border-surface-3 h-11 font-mono text-xs"
+                data-ocid="connect.import.key_input"
+              />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password to encrypt key"
+                className="bg-surface-2 border-surface-3 h-11"
+                onKeyDown={(e) => e.key === "Enter" && handleImport()}
+                data-ocid="connect.import.input"
+              />
+              <Button
+                type="button"
+                onClick={handleImport}
+                disabled={loading || !importKey || !password}
+                className="w-full h-11 rounded-full font-semibold"
+                style={{
+                  background: "oklch(0.82 0.19 152)",
+                  color: "oklch(0.10 0.01 150)",
+                }}
+                data-ocid="connect.import.submit_button"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                Import &amp; Connect
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div
           className="mt-6 p-3 rounded-xl text-xs text-muted-foreground"
@@ -186,16 +409,106 @@ function ConnectScreen({ onConnect }: { onConnect: (addr: string) => void }) {
 function SendHTNModal({
   myAddress,
   recipientAddress,
+  privateKey,
   onClose,
 }: {
   myAddress: string;
   recipientAddress: string;
+  privateKey: Buffer | null;
   onClose: () => void;
 }) {
   const [recipient, setRecipient] = useState(recipientAddress);
   const [amount, setAmount] = useState("");
   const [sending, setSending] = useState(false);
+  const [txId, setTxId] = useState<string | null>(null);
   const { data: balance } = useHoosatBalance(myAddress);
+
+  if (!privateKey) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-3 py-6 text-center"
+        data-ocid="send_htn.locked_state"
+      >
+        <Lock className="w-8 h-8 text-muted-foreground opacity-50" />
+        <p className="text-sm text-muted-foreground">
+          Unlock your wallet to send HTN.
+        </p>
+      </div>
+    );
+  }
+
+  if (txId) {
+    return (
+      <div className="space-y-4" data-ocid="send_htn.success_state">
+        <div
+          className="flex items-center gap-2 rounded-xl px-4 py-3"
+          style={{
+            background: "oklch(0.82 0.19 152 / 0.1)",
+            border: "1px solid oklch(0.82 0.19 152 / 0.25)",
+          }}
+        >
+          <div className="text-mint font-semibold text-sm">
+            ✓ Transaction Submitted
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">
+            Transaction ID
+          </div>
+          <div
+            className="rounded-xl px-3 py-2 text-[11px] font-mono text-muted-foreground break-all leading-relaxed"
+            style={{ background: "oklch(0.18 0.013 240)" }}
+          >
+            {txId}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1 rounded-full text-xs border-surface-3"
+            onClick={() => {
+              navigator.clipboard.writeText(txId);
+              toast.success("TX ID copied!");
+            }}
+            data-ocid="send_htn.copy_txid.button"
+          >
+            <Copy className="w-3.5 h-3.5 mr-1.5" />
+            Copy TX ID
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="flex-1 rounded-full text-xs"
+            style={{
+              background: "oklch(0.82 0.19 152)",
+              color: "oklch(0.10 0.01 150)",
+            }}
+            onClick={() =>
+              window.open(
+                `https://explorer.hoosat.net/transactions/${txId}`,
+                "_blank",
+              )
+            }
+            data-ocid="send_htn.view_explorer.button"
+          >
+            View in Explorer
+          </Button>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs text-muted-foreground"
+          onClick={onClose}
+          data-ocid="send_htn.close_button"
+        >
+          Close
+        </Button>
+      </div>
+    );
+  }
 
   const handleSend = async () => {
     if (!amount || Number(amount) <= 0) {
@@ -207,10 +520,28 @@ function SendHTNModal({
       return;
     }
     setSending(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSending(false);
-    toast.success(`Sent ${amount} HTN to ${recipient.slice(0, 16)}...`);
-    onClose();
+    try {
+      const client = new HoosatWebClient({
+        baseUrl: "https://proxy.hoosat.net/api/v1",
+      });
+      const utxosRes = await client.getUtxos([myAddress]);
+      const builder = new HoosatTxBuilder();
+      for (const utxo of utxosRes.utxos) {
+        builder.addInput(utxo, privateKey);
+      }
+      const fee = builder.estimateFee();
+      builder
+        .addOutput(recipient, HoosatUtils.amountToSompi(amount))
+        .setFee(fee)
+        .addChangeOutput(myAddress);
+      const signed = builder.sign();
+      const result = await client.submitTransaction(signed);
+      setTxId(result.transactionId);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Transaction failed");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -283,10 +614,14 @@ function SendHTNModal({
 // Main app view
 export function AppView({
   myAddress,
+  privateKey,
   onDisconnect,
+  onLock,
 }: {
   myAddress: string;
+  privateKey: Buffer | null;
   onDisconnect: () => void;
+  onLock: () => void;
 }) {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>(DEMO_MESSAGES);
@@ -400,8 +735,11 @@ export function AppView({
           </div>
           <span className="font-bold text-sm">HBeam</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="max-w-[160px] truncate font-mono" title={myAddress}>
+        <div className="flex items-center gap-2">
+          <span
+            className="text-xs text-muted-foreground max-w-[140px] truncate font-mono"
+            title={myAddress}
+          >
             {myAddress.slice(0, 20)}...
           </span>
           <button
@@ -414,6 +752,24 @@ export function AppView({
             data-ocid="app.copy_address.button"
           >
             <Copy className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onLock}
+            title={privateKey ? "Lock wallet" : "Wallet locked"}
+            className="transition-colors ml-1"
+            style={{
+              color: privateKey
+                ? "oklch(0.55 0.02 240)"
+                : "oklch(0.75 0.15 35)",
+            }}
+            data-ocid="app.lock.button"
+          >
+            {privateKey ? (
+              <Unlock className="w-4 h-4" />
+            ) : (
+              <Lock className="w-4 h-4" />
+            )}
           </button>
         </div>
       </div>
@@ -506,15 +862,12 @@ export function AppView({
                     <button
                       key={contact.address}
                       type="button"
-                      className={`group flex items-center gap-2 px-4 py-3 cursor-pointer transition-colors ${
+                      className={`group flex items-center gap-2 px-4 py-3 w-full cursor-pointer transition-colors ${
                         selectedContact?.address === contact.address
                           ? "bg-mint/10 border-r-2 border-mint"
                           : "hover:bg-surface-2"
                       }`}
                       onClick={() => setSelectedContact(contact)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && setSelectedContact(contact)
-                      }
                       data-ocid={`contacts.item.${i + 1}`}
                     >
                       <div
@@ -617,6 +970,7 @@ export function AppView({
                     <SendHTNModal
                       myAddress={myAddress}
                       recipientAddress={selectedContact.address}
+                      privateKey={privateKey}
                       onClose={() => setSendOpen(false)}
                     />
                   </DialogContent>
@@ -646,9 +1000,7 @@ export function AppView({
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          className={`flex ${
-                            msg.from === "me" ? "justify-end" : "justify-start"
-                          }`}
+                          className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}
                           data-ocid={`chat.item.${i + 1}`}
                         >
                           <div className="max-w-[72%]">
@@ -672,9 +1024,7 @@ export function AppView({
                               {msg.content}
                             </div>
                             <div
-                              className={`text-[10px] text-muted-foreground mt-1 ${
-                                msg.from === "me" ? "text-right" : "text-left"
-                              }`}
+                              className={`text-[10px] text-muted-foreground mt-1 ${msg.from === "me" ? "text-right" : "text-left"}`}
                             >
                               {formatTime(msg.timestamp)}
                             </div>
@@ -757,10 +1107,18 @@ export function AppView({
           className="w-64 border-l border-surface-3 flex flex-col flex-shrink-0"
           style={{ background: "oklch(0.13 0.011 240)" }}
         >
-          <div className="px-4 py-3 border-b border-surface-3">
+          <div className="px-4 py-3 border-b border-surface-3 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Wallet
             </span>
+            {!privateKey && (
+              <span
+                className="flex items-center gap-1 text-[11px] font-medium"
+                style={{ color: "oklch(0.75 0.15 35)" }}
+              >
+                <Lock className="w-3 h-3" /> Locked
+              </span>
+            )}
           </div>
 
           <div className="p-4 space-y-4">
@@ -844,6 +1202,7 @@ export function AppView({
                 <SendHTNModal
                   myAddress={myAddress}
                   recipientAddress={selectedContact?.address ?? ""}
+                  privateKey={privateKey}
                   onClose={() => setSendOpen(false)}
                 />
               </DialogContent>
@@ -882,6 +1241,7 @@ export function AppView({
 
 // Root export: handles connect screen + app
 export function AppRoot() {
+  const wallet = useWallet();
   const [myAddress, setMyAddress] = useState<string | null>(() => {
     return sessionStorage.getItem("hbeam_address");
   });
@@ -894,11 +1254,21 @@ export function AppRoot() {
     }
   }, [myAddress]);
 
+  const handleDisconnect = () => {
+    wallet.lockWallet();
+    setMyAddress(null);
+  };
+
   if (!myAddress) {
-    return <ConnectScreen onConnect={setMyAddress} />;
+    return <ConnectScreen onConnect={setMyAddress} wallet={wallet} />;
   }
 
   return (
-    <AppView myAddress={myAddress} onDisconnect={() => setMyAddress(null)} />
+    <AppView
+      myAddress={myAddress}
+      privateKey={wallet.privateKey}
+      onDisconnect={handleDisconnect}
+      onLock={wallet.lockWallet}
+    />
   );
 }

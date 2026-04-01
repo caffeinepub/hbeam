@@ -1,31 +1,33 @@
 # HBeam
 
 ## Current State
-New project. Empty backend and no frontend.
+The app has a `ConnectScreen` that accepts a Hoosat address (read-only), and a `SendHTNModal` that simulates sending (setTimeout mock, no real transaction). Balance is fetched from the Hoosat REST API. No private key management exists.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Landing page: hero section with mint/dark crypto aesthetic, features section, send payment modal showcase
-- Chat interface: contacts list, message thread, compose area
-- Wallet panel: connect via Hoosat address, show HTN balance (via Hoosat REST API)
-- Send HTN payment flow: modal with recipient address, amount, fee estimation, confirm
-- File sharing UI (attachment button, file preview in chat)
-- Voice message UI (record button, audio playback in chat)
-- Integration with Hoosat REST API (https://proxy.hoosat.net/api/v1) for balance and transaction queries
-- Message storage in backend canister
-- Contact management in backend canister
+- Install `hoosat-sdk-web` npm package
+- `WalletSetup` flow on the connect screen: generate a new wallet OR import via private key hex
+- Encrypted private key storage in localStorage using Web Crypto API (AES-GCM, PBKDF2, password-locked)
+- Real transaction signing in `SendHTNModal` using `HoosatTxBuilder` + `HoosatCrypto` + `HoosatWebClient`
+  - Fetch UTXOs from `client.getUtxos([myAddress])`
+  - Fetch fee estimate from `client.getFeeEstimate()`
+  - Build tx with `HoosatTxBuilder`, sign with private key, submit via `client.submitTransaction()`
+  - Show real TX ID on success (with link or copy button)
+- A "Lock wallet" button that clears the in-memory private key (address remains to re-unlock)
+- Password prompt dialog to decrypt and unlock wallet when needed
 
 ### Modify
-N/A
+- `ConnectScreen`: replace simple address input with wallet setup (generate / import / unlock existing)
+- `SendHTNModal`: replace mock `setTimeout` with real SDK transaction signing flow
+- `AppView`: pass `privateKey` (in-memory, never persisted in plaintext) alongside `myAddress`
 
 ### Remove
-N/A
+- Mock `await new Promise((r) => setTimeout(r, 1500))` in `SendHTNModal`
 
 ## Implementation Plan
-1. Generate Motoko backend: messages, contacts, wallet addresses storage
-2. Build landing page with dark glassmorphism design, mint (#35E08A) accent, network-graph decorations
-3. Build chat UI: 3-column layout (contacts, thread, wallet panel)
-4. Integrate Hoosat REST API for balance lookups and transaction status
-5. Send payment modal with HTN amount input and address
-6. File sharing and voice message UI components
+1. Install `hoosat-sdk-web` in `package.json`
+2. Create `src/hooks/useWallet.ts` - wallet state hook (address, unlock/lock, encrypted storage, generate/import)
+3. Update `ConnectScreen` to offer three paths: Generate New Wallet, Import Private Key, Unlock Existing (if encrypted key in localStorage)
+4. Update `SendHTNModal` to accept `privateKey: Buffer` prop and perform real tx signing
+5. Thread `privateKey` through `AppView` and `AppRoot`
