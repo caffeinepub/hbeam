@@ -8,8 +8,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-// @ts-ignore
-import { HoosatTxBuilder, HoosatUtils, HoosatWebClient } from "hoosat-sdk-web";
+import {
+  HoosatCrypto,
+  HoosatTxBuilder,
+  HoosatUtils,
+  HoosatWebClient,
+} from "hoosat-sdk-web";
 import {
   ArrowLeft,
   Copy,
@@ -529,11 +533,11 @@ function SendHTNModal({
       for (const utxo of utxosRes.utxos) {
         builder.addInput(utxo, privateKey);
       }
-      const fee = builder.estimateFee();
-      builder
-        .addOutput(recipient, HoosatUtils.amountToSompi(amount))
-        .setFee(fee)
-        .addChangeOutput(myAddress);
+      // Add recipient output first
+      builder.addOutput(recipient, HoosatUtils.amountToSompi(amount));
+      // Calculate fee accounting for 2 outputs (recipient + change)
+      const fee = HoosatCrypto.calculateMinFee(utxosRes.utxos.length, 2);
+      builder.setFee(fee).addChangeOutput(myAddress);
       const signed = builder.sign();
       const result = await client.submitTransaction(signed);
       setTxId(result.transactionId);

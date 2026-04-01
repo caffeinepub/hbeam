@@ -47137,8 +47137,9 @@ function SendHTNModal({
       for (const utxo of utxosRes.utxos) {
         builder.addInput(utxo, privateKey);
       }
-      const fee = builder.estimateFee();
-      builder.addOutput(recipient, Ft.amountToSompi(amount)).setFee(fee).addChangeOutput(myAddress);
+      builder.addOutput(recipient, Ft.amountToSompi(amount));
+      const fee = ft$1.calculateMinFee(utxosRes.utxos.length, 2);
+      builder.setFee(fee).addChangeOutput(myAddress);
       const signed = builder.sign();
       const result = await client2.submitTransaction(signed);
       setTxId(result.transactionId);
