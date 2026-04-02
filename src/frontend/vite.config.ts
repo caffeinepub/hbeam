@@ -54,12 +54,6 @@ export default defineConfig({
         find: "@",
         replacement: fileURLToPath(new URL("./src", import.meta.url)),
       },
-      {
-        find: "hoosat-sdk-web",
-        replacement: fileURLToPath(
-          new URL("./src/lib/hoosat-sdk-stub.ts", import.meta.url),
-        ),
-      },
     ],
     dedupe: ["@dfinity/agent"],
   },
