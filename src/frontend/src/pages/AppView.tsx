@@ -691,8 +691,8 @@ export function AppView({
 
   return (
     <div
-      className="h-screen flex flex-col overflow-hidden"
-      style={{ background: "oklch(0.11 0.012 240)" }}
+      className="flex flex-col overflow-hidden"
+      style={{ background: "oklch(0.11 0.012 240)", height: "100dvh" }}
     >
       {/* Top bar */}
       <div
@@ -1095,7 +1095,11 @@ export function AppView({
                   }}
                   data-ocid="chat.send.button"
                 >
-                  <Send className="w-4 h-4" />
+                  {sendMessageMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </>
@@ -1275,8 +1279,11 @@ export function AppView({
 
       {/* Mobile bottom navigation */}
       <div
-        className="md:hidden flex items-center justify-around border-t border-surface-3 flex-shrink-0 safe-area-inset-bottom"
-        style={{ background: "oklch(0.13 0.011 240)" }}
+        className="md:hidden flex items-center justify-around border-t border-surface-3 flex-shrink-0"
+        style={{
+          background: "oklch(0.13 0.011 240)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
       >
         <button
           type="button"
