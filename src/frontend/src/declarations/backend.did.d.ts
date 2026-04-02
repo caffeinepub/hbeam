@@ -12,6 +12,16 @@ import type { Principal } from '@icp-sdk/core/principal';
 
 export interface Contact { 'displayName' : string, 'address' : HoosatAddress }
 export type HoosatAddress = string;
+export interface FileMetadata { 'fileName' : string, 'fileSize' : bigint, 'fileType' : string }
+export type MessageType = { 'text' : null } | { 'file' : null } | { 'voice' : null };
+export interface Message {
+  'sender' : HoosatAddress,
+  'recipient' : HoosatAddress,
+  'content' : string,
+  'timestamp' : bigint,
+  'messageType' : MessageType,
+  'fileMetadata' : [] | [FileMetadata],
+}
 export interface WalletAddress {
   'principal' : Principal,
   'hoosatAddress' : HoosatAddress,
@@ -20,9 +30,11 @@ export interface _SERVICE {
   'addContact' : ActorMethod<[HoosatAddress, HoosatAddress, string], undefined>,
   'getAllWalletAddresses' : ActorMethod<[], Array<WalletAddress>>,
   'getContacts' : ActorMethod<[HoosatAddress], Array<Contact>>,
+  'getMessages' : ActorMethod<[HoosatAddress, HoosatAddress], Array<Message>>,
   'getWalletAddress' : ActorMethod<[Principal], HoosatAddress>,
   'registerWalletAddress' : ActorMethod<[HoosatAddress], undefined>,
   'removeContact' : ActorMethod<[HoosatAddress, HoosatAddress], undefined>,
+  'sendMessage' : ActorMethod<[HoosatAddress, HoosatAddress, string, bigint], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

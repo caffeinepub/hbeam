@@ -58,6 +58,43 @@ export function useRemoveContact(userAddress: string) {
   });
 }
 
+export function useGetMessages(myAddress: string, contactAddress: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["messages", myAddress, contactAddress],
+    queryFn: async () => {
+      if (!actor || !myAddress || !contactAddress) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getMessages(myAddress, contactAddress);
+    },
+    enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
+    refetchInterval: 3000,
+  });
+}
+
+export function useSendMessage(myAddress: string, contactAddress: string) {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ content }: { content: string }) => {
+      if (!actor) throw new Error("Not connected");
+      const timestamp = BigInt(Date.now());
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).sendMessage(
+        myAddress,
+        contactAddress,
+        content,
+        timestamp,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({
+        queryKey: ["messages", myAddress, contactAddress],
+      });
+    },
+  });
+}
+
 export function useHoosatBalance(address: string) {
   return useQuery({
     queryKey: ["hoosat-balance", address],

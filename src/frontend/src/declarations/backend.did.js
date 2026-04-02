@@ -17,14 +17,34 @@ export const Contact = IDL.Record({
   'displayName' : IDL.Text,
   'address' : HoosatAddress,
 });
+export const MessageType = IDL.Variant({
+  'text' : IDL.Null,
+  'file' : IDL.Null,
+  'voice' : IDL.Null,
+});
+export const FileMetadata = IDL.Record({
+  'fileName' : IDL.Text,
+  'fileSize' : IDL.Nat,
+  'fileType' : IDL.Text,
+});
+export const Message = IDL.Record({
+  'sender' : IDL.Text,
+  'recipient' : IDL.Text,
+  'content' : IDL.Text,
+  'timestamp' : IDL.Nat,
+  'messageType' : MessageType,
+  'fileMetadata' : IDL.Opt(FileMetadata),
+});
 
 export const idlService = IDL.Service({
   'addContact' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text], [], []),
   'getAllWalletAddresses' : IDL.Func([], [IDL.Vec(WalletAddress)], ['query']),
   'getContacts' : IDL.Func([HoosatAddress], [IDL.Vec(Contact)], ['query']),
+  'getMessages' : IDL.Func([HoosatAddress, HoosatAddress], [IDL.Vec(Message)], ['query']),
   'getWalletAddress' : IDL.Func([IDL.Principal], [HoosatAddress], ['query']),
   'registerWalletAddress' : IDL.Func([HoosatAddress], [], []),
   'removeContact' : IDL.Func([HoosatAddress, HoosatAddress], [], []),
+  'sendMessage' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text, IDL.Nat], [], []),
 });
 
 export const idlInitArgs = [];
@@ -39,14 +59,34 @@ export const idlFactory = ({ IDL }) => {
     'displayName' : IDL.Text,
     'address' : HoosatAddress,
   });
+  const MessageType = IDL.Variant({
+    'text' : IDL.Null,
+    'file' : IDL.Null,
+    'voice' : IDL.Null,
+  });
+  const FileMetadata = IDL.Record({
+    'fileName' : IDL.Text,
+    'fileSize' : IDL.Nat,
+    'fileType' : IDL.Text,
+  });
+  const Message = IDL.Record({
+    'sender' : IDL.Text,
+    'recipient' : IDL.Text,
+    'content' : IDL.Text,
+    'timestamp' : IDL.Nat,
+    'messageType' : MessageType,
+    'fileMetadata' : IDL.Opt(FileMetadata),
+  });
   
   return IDL.Service({
     'addContact' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text], [], []),
     'getAllWalletAddresses' : IDL.Func([], [IDL.Vec(WalletAddress)], ['query']),
     'getContacts' : IDL.Func([HoosatAddress], [IDL.Vec(Contact)], ['query']),
+    'getMessages' : IDL.Func([HoosatAddress, HoosatAddress], [IDL.Vec(Message)], ['query']),
     'getWalletAddress' : IDL.Func([IDL.Principal], [HoosatAddress], ['query']),
     'registerWalletAddress' : IDL.Func([HoosatAddress], [], []),
     'removeContact' : IDL.Func([HoosatAddress, HoosatAddress], [], []),
+    'sendMessage' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text, IDL.Nat], [], []),
   });
 };
 

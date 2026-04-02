@@ -39,49 +39,24 @@ import { useActor } from "../hooks/useActor";
 import {
   useAddContact,
   useGetContacts,
+  useGetMessages,
   useHoosatBalance,
   useRegisterWallet,
   useRemoveContact,
+  useSendMessage,
 } from "../hooks/useQueries";
 import { useWallet } from "../hooks/useWallet";
 
-// Local message type for demo
-interface Message {
-  id: string;
-  from: string;
-  to: string;
+// Message type matching the backend schema
+type MessageType = { text: null } | { file: null } | { voice: null };
+interface BackendMessage {
+  sender: string;
+  recipient: string;
   content: string;
-  timestamp: number;
-  type: "text" | "file" | "voice";
+  timestamp: bigint;
+  messageType: MessageType;
+  fileMetadata: [] | [{ fileName: string; fileSize: bigint; fileType: string }];
 }
-
-// Seed demo messages
-const DEMO_MESSAGES: Message[] = [
-  {
-    id: "1",
-    from: "hoosat:qalice",
-    to: "me",
-    content: "Hey! Can you send me some HTN?",
-    timestamp: Date.now() - 300000,
-    type: "text",
-  },
-  {
-    id: "2",
-    from: "me",
-    to: "hoosat:qalice",
-    content: "Sure, sending 10 HTN now!",
-    timestamp: Date.now() - 240000,
-    type: "text",
-  },
-  {
-    id: "3",
-    from: "hoosat:qalice",
-    to: "me",
-    content: "Got it in about 1 second ⚡ Hoosat is fast!",
-    timestamp: Date.now() - 180000,
-    type: "text",
-  },
-];
 
 type ConnectTab = "generate" | "import" | "unlock";
 type MobileView = "contacts" | "chat" | "wallet";
@@ -631,7 +606,14 @@ export function AppView({
 }) {
   const { actor } = useActor();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [messages, setMessages] = useState<Message[]>(DEMO_MESSAGES);
+  const sendMessageMutation = useSendMessage(
+    myAddress,
+    selectedContact?.address ?? "",
+  );
+  const {
+    data: messages = [] as BackendMessage[],
+    isLoading: messagesLoading,
+  } = useGetMessages(myAddress, selectedContact?.address ?? "");
   const [input, setInput] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [newContactAddr, setNewContactAddr] = useState("");
@@ -655,26 +637,16 @@ export function AppView({
           { address: "hoosat:qcarolmint", displayName: "Carol M." },
         ];
 
-  const conversationMessages = selectedContact
-    ? messages.filter(
-        (m) =>
-          (m.from === selectedContact.address && m.to === "me") ||
-          (m.from === "me" && m.to === selectedContact.address),
-      )
-    : [];
+  const conversationMessages = messages;
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim() || !selectedContact) return;
-    const newMsg: Message = {
-      id: Date.now().toString(),
-      from: "me",
-      to: selectedContact.address,
-      content: input.trim(),
-      timestamp: Date.now(),
-      type: "text",
-    };
-    setMessages((prev) => [...prev, newMsg]);
-    setInput("");
+    try {
+      await sendMessageMutation.mutateAsync({ content: input.trim() });
+      setInput("");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to send message");
+    }
   };
 
   const handleAddContact = async () => {
@@ -1019,7 +991,11 @@ export function AppView({
               {/* Messages */}
               <ScrollArea className="flex-1 px-3 sm:px-5 py-4">
                 <AnimatePresence initial={false}>
-                  {conversationMessages.length === 0 ? (
+                  {messagesLoading ? (
+                    <div className="flex items-center justify-center py-16">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : conversationMessages.length === 0 ? (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -1035,12 +1011,14 @@ export function AppView({
                     <div className="space-y-3">
                       {conversationMessages.map((msg, i) => (
                         <motion.div
-                          key={msg.id}
+                          key={`${msg.sender}-${String(msg.timestamp)}-${i}`}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
                           className={`flex ${
-                            msg.from === "me" ? "justify-end" : "justify-start"
+                            msg.sender === myAddress
+                              ? "justify-end"
+                              : "justify-start"
                           }`}
                           data-ocid={`chat.item.${i + 1}`}
                         >
@@ -1049,15 +1027,15 @@ export function AppView({
                               className="rounded-2xl px-4 py-2.5 text-sm"
                               style={{
                                 background:
-                                  msg.from === "me"
+                                  msg.sender === myAddress
                                     ? "oklch(0.82 0.19 152 / 0.15)"
                                     : "oklch(0.22 0.016 240)",
                                 color:
-                                  msg.from === "me"
+                                  msg.sender === myAddress
                                     ? "oklch(0.90 0.15 152)"
                                     : "oklch(0.90 0.01 220)",
                                 borderRadius:
-                                  msg.from === "me"
+                                  msg.sender === myAddress
                                     ? "18px 18px 4px 18px"
                                     : "18px 18px 18px 4px",
                               }}
@@ -1066,10 +1044,12 @@ export function AppView({
                             </div>
                             <div
                               className={`text-[10px] text-muted-foreground mt-1 ${
-                                msg.from === "me" ? "text-right" : "text-left"
+                                msg.sender === myAddress
+                                  ? "text-right"
+                                  : "text-left"
                               }`}
                             >
-                              {formatTime(msg.timestamp)}
+                              {formatTime(Number(msg.timestamp))}
                             </div>
                           </div>
                         </motion.div>
@@ -1107,7 +1087,7 @@ export function AppView({
                 <button
                   type="button"
                   onClick={sendMessage}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || sendMessageMutation.isPending}
                   className="w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-40 flex-shrink-0 touch-manipulation"
                   style={{
                     background: "oklch(0.82 0.19 152)",
