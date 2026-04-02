@@ -44427,6 +44427,14 @@ class Backend {
       return result;
     }
   }
+  async getMessages(arg0, arg1) {
+    const result = await this.actor.getMessages(arg0, arg1);
+    return result;
+  }
+  async sendMessage(arg0, arg1, arg2, arg3) {
+    const result = await this.actor.sendMessage(arg0, arg1, arg2, arg3);
+    return result;
+  }
 }
 function createActor(canisterId, _uploadFile, _downloadFile, options = {}) {
   const agent = options.agent || HttpAgent.createSync({
@@ -46565,12 +46573,7 @@ function useSendMessage(myAddress, contactAddress) {
     mutationFn: async ({ content }) => {
       if (!actor) throw new Error("Not connected");
       const timestamp = BigInt(Date.now());
-      return actor.sendMessage(
-        myAddress,
-        contactAddress,
-        content,
-        timestamp
-      );
+      return actor.sendMessage(myAddress, contactAddress, content, timestamp);
     },
     onSuccess: () => {
       qc.invalidateQueries({

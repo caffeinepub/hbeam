@@ -98,6 +98,20 @@ export interface Contact {
     displayName: string;
     address: HoosatAddress;
 }
+export type MessageType = { text: null } | { file: null } | { voice: null };
+export interface FileMetadata {
+    fileName: string;
+    fileSize: bigint;
+    fileType: string;
+}
+export interface Message {
+    sender: HoosatAddress;
+    recipient: HoosatAddress;
+    content: string;
+    timestamp: bigint;
+    messageType: MessageType;
+    fileMetadata: [] | [FileMetadata];
+}
 export interface backendInterface {
     addContact(userAddress: HoosatAddress, contactAddress: HoosatAddress, displayName: string): Promise<void>;
     getAllWalletAddresses(): Promise<Array<WalletAddress>>;
@@ -105,6 +119,8 @@ export interface backendInterface {
     getWalletAddress(user: Principal): Promise<HoosatAddress>;
     registerWalletAddress(hoosatAddress: HoosatAddress): Promise<void>;
     removeContact(userAddress: HoosatAddress, contactAddress: HoosatAddress): Promise<void>;
+    getMessages(user1: HoosatAddress, user2: HoosatAddress): Promise<Array<Message>>;
+    sendMessage(sender: HoosatAddress, recipient: HoosatAddress, content: string, timestamp: bigint): Promise<void>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
@@ -191,6 +207,14 @@ export class Backend implements backendInterface {
             const result = await this.actor.removeContact(arg0, arg1);
             return result;
         }
+    }
+    async getMessages(arg0: HoosatAddress, arg1: HoosatAddress): Promise<Array<Message>> {
+        const result = await this.actor.getMessages(arg0, arg1);
+        return result;
+    }
+    async sendMessage(arg0: HoosatAddress, arg1: HoosatAddress, arg2: string, arg3: bigint): Promise<void> {
+        const result = await this.actor.sendMessage(arg0, arg1, arg2, arg3);
+        return result;
     }
 }
 export interface CreateActorOptions {

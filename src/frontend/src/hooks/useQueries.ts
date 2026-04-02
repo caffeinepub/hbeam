@@ -64,8 +64,7 @@ export function useGetMessages(myAddress: string, contactAddress: string) {
     queryKey: ["messages", myAddress, contactAddress],
     queryFn: async () => {
       if (!actor || !myAddress || !contactAddress) return [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (actor as any).getMessages(myAddress, contactAddress);
+      return actor.getMessages(myAddress, contactAddress);
     },
     enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
     refetchInterval: 3000,
@@ -79,13 +78,7 @@ export function useSendMessage(myAddress: string, contactAddress: string) {
     mutationFn: async ({ content }: { content: string }) => {
       if (!actor) throw new Error("Not connected");
       const timestamp = BigInt(Date.now());
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (actor as any).sendMessage(
-        myAddress,
-        contactAddress,
-        content,
-        timestamp,
-      );
+      return actor.sendMessage(myAddress, contactAddress, content, timestamp);
     },
     onSuccess: () => {
       qc.invalidateQueries({
