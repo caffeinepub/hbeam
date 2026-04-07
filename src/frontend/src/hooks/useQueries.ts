@@ -71,18 +71,27 @@ export function useGetMessages(myAddress: string, contactAddress: string) {
   });
 }
 
-export function useSendMessage(myAddress: string, contactAddress: string) {
+// Addresses are passed at call time so the mutation always uses the current contact
+export function useSendMessage(myAddress: string) {
   const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ content }: { content: string }) => {
+    mutationFn: async ({
+      content,
+      contactAddress,
+    }: {
+      content: string;
+      contactAddress: string;
+    }) => {
       if (!actor) throw new Error("Not connected");
+      if (!myAddress) throw new Error("No wallet address");
+      if (!contactAddress) throw new Error("No contact selected");
       const timestamp = BigInt(Date.now());
       return actor.sendMessage(myAddress, contactAddress, content, timestamp);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({
-        queryKey: ["messages", myAddress, contactAddress],
+        queryKey: ["messages", myAddress, variables.contactAddress],
       });
     },
   });

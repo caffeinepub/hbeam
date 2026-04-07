@@ -58,6 +58,9 @@ persistent actor {
     content : Text,
     timestamp : Nat
   ) : async () {
+    if (sender == "") { Runtime.trap("Sender address cannot be empty") };
+    if (recipient == "") { Runtime.trap("Recipient address cannot be empty") };
+    if (content == "") { Runtime.trap("Message content cannot be empty") };
     let convId = makeConvId(sender, recipient);
     let msg : Message = {
       sender;

@@ -606,10 +606,7 @@ export function AppView({
 }) {
   const { actor } = useActor();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const sendMessageMutation = useSendMessage(
-    myAddress,
-    selectedContact?.address ?? "",
-  );
+  const sendMessageMutation = useSendMessage(myAddress);
   const {
     data: messages = [] as BackendMessage[],
     isLoading: messagesLoading,
@@ -642,7 +639,10 @@ export function AppView({
   const sendMessage = async () => {
     if (!input.trim() || !selectedContact) return;
     try {
-      await sendMessageMutation.mutateAsync({ content: input.trim() });
+      await sendMessageMutation.mutateAsync({
+        content: input.trim(),
+        contactAddress: selectedContact.address,
+      });
       setInput("");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to send message");
