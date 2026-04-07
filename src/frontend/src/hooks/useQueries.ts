@@ -11,6 +11,8 @@ export function useGetContacts(userAddress: string) {
       return actor.getContacts(userAddress);
     },
     enabled: !!actor && !isFetching && !!userAddress,
+    // Cache contacts for 30s so navigating tabs doesn't reload them
+    staleTime: 30_000,
   });
 }
 
@@ -36,7 +38,8 @@ export function useAddContact(userAddress: string) {
       contactAddress,
       displayName,
     }: { contactAddress: string; displayName: string }) => {
-      if (!actor) throw new Error("Not connected");
+      if (!actor) throw new Error("Actor not ready — try again");
+      if (!userAddress) throw new Error("No wallet address");
       return actor.addContact(userAddress, contactAddress, displayName);
     },
     onSuccess: () => {
@@ -66,21 +69,17 @@ export function useGetMessages(myAddress: string, contactAddress: string) {
     queryFn: async () => {
       if (!actor || !myAddress || !contactAddress) return [];
       const msgs = await actor.getMessages(myAddress, contactAddress);
-      // Sort ascending by timestamp so messages always appear in order
       return [...msgs].sort((a, b) =>
         a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0,
       );
     },
     enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
-    // Poll every 3s for near-realtime sync; staleTime 0 ensures fresh data
     refetchInterval: 3000,
     staleTime: 0,
-    // Keep previous data so switching contacts doesn't flash empty
     placeholderData: (prev) => prev,
   });
 }
 
-// Addresses are passed at call time so the mutation always uses the current contact
 export function useSendMessage(myAddress: string) {
   const { actor } = useActor();
   const qc = useQueryClient();
@@ -99,10 +98,8 @@ export function useSendMessage(myAddress: string) {
       await actor.sendMessage(myAddress, contactAddress, content, timestamp);
       return { timestamp, content, contactAddress };
     },
-    // Optimistic update: add the message locally before the backend responds
     onMutate: async ({ content, contactAddress }) => {
       const queryKey = ["messages", myAddress, contactAddress];
-      // Cancel any in-flight refetches so they don't overwrite our optimistic update
       await qc.cancelQueries({ queryKey });
       const previousMessages = qc.getQueryData<Message[]>(queryKey) ?? [];
       const optimisticMessage: Message = {
@@ -119,13 +116,11 @@ export function useSendMessage(myAddress: string) {
       ]);
       return { previousMessages, queryKey };
     },
-    // On error, roll back to previous messages
     onError: (_err, _vars, context) => {
       if (context) {
         qc.setQueryData(context.queryKey, context.previousMessages);
       }
     },
-    // After success or error, always refetch to sync with server
     onSettled: (_data, _err, variables) => {
       qc.invalidateQueries({
         queryKey: ["messages", myAddress, variables.contactAddress],
@@ -151,5 +146,6 @@ export function useHoosatBalance(address: string) {
     },
     enabled: !!address,
     refetchInterval: 30000,
+    staleTime: 20_000,
   });
 }

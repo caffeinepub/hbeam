@@ -46467,45 +46467,42 @@ function InternetIdentityProvider({
   });
 }
 const ACTOR_QUERY_KEY = "actor";
+let warmActor = null;
+createActorWithConfig().then((a2) => {
+  warmActor = a2;
+}).catch(() => {
+});
 function useActor() {
   const { identity } = useInternetIdentity();
   const queryClient2 = useQueryClient();
+  const prevActorRef = reactExports.useRef(null);
   const actorQuery = useQuery({
-    queryKey: [ACTOR_QUERY_KEY, identity == null ? void 0 : identity.getPrincipal().toString()],
+    queryKey: [ACTOR_QUERY_KEY, (identity == null ? void 0 : identity.getPrincipal().toString()) ?? "anon"],
     queryFn: async () => {
-      const isAuthenticated = !!identity;
-      if (!isAuthenticated) {
+      if (!identity) {
+        if (warmActor) return warmActor;
         return await createActorWithConfig();
       }
-      const actorOptions = {
-        agentOptions: {
-          identity
-        }
-      };
-      const actor = await createActorWithConfig(actorOptions);
+      const actor = await createActorWithConfig({
+        agentOptions: { identity }
+      });
       return actor;
     },
-    // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
-    // This will cause the actor to be recreated when the identity changes
-    enabled: true
+    gcTime: Number.POSITIVE_INFINITY,
+    // Provide warm actor as initial data to avoid loading flash
+    initialData: identity ? void 0 : warmActor ?? void 0
   });
   reactExports.useEffect(() => {
-    if (actorQuery.data) {
+    if (actorQuery.data && actorQuery.data !== prevActorRef.current) {
+      prevActorRef.current = actorQuery.data;
       queryClient2.invalidateQueries({
-        predicate: (query) => {
-          return !query.queryKey.includes(ACTOR_QUERY_KEY);
-        }
-      });
-      queryClient2.refetchQueries({
-        predicate: (query) => {
-          return !query.queryKey.includes(ACTOR_QUERY_KEY);
-        }
+        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY)
       });
     }
   }, [actorQuery.data, queryClient2]);
   return {
-    actor: actorQuery.data || null,
+    actor: actorQuery.data ?? null,
     isFetching: actorQuery.isFetching
   };
 }
@@ -46517,7 +46514,9 @@ function useGetContacts(userAddress) {
       if (!actor || !userAddress) return [];
       return actor.getContacts(userAddress);
     },
-    enabled: !!actor && !isFetching && !!userAddress
+    enabled: !!actor && !isFetching && !!userAddress,
+    // Cache contacts for 30s so navigating tabs doesn't reload them
+    staleTime: 3e4
   });
 }
 function useRegisterWallet() {
@@ -46541,7 +46540,8 @@ function useAddContact(userAddress) {
       contactAddress,
       displayName
     }) => {
-      if (!actor) throw new Error("Not connected");
+      if (!actor) throw new Error("Actor not ready — try again");
+      if (!userAddress) throw new Error("No wallet address");
       return actor.addContact(userAddress, contactAddress, displayName);
     },
     onSuccess: () => {
@@ -46574,10 +46574,8 @@ function useGetMessages(myAddress, contactAddress) {
       );
     },
     enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
-    // Poll every 3s for near-realtime sync; staleTime 0 ensures fresh data
     refetchInterval: 3e3,
     staleTime: 0,
-    // Keep previous data so switching contacts doesn't flash empty
     placeholderData: (prev) => prev
   });
 }
@@ -46596,7 +46594,6 @@ function useSendMessage(myAddress) {
       await actor.sendMessage(myAddress, contactAddress, content, timestamp);
       return { timestamp, content, contactAddress };
     },
-    // Optimistic update: add the message locally before the backend responds
     onMutate: async ({ content, contactAddress }) => {
       const queryKey = ["messages", myAddress, contactAddress];
       await qc.cancelQueries({ queryKey });
@@ -46615,13 +46612,11 @@ function useSendMessage(myAddress) {
       ]);
       return { previousMessages, queryKey };
     },
-    // On error, roll back to previous messages
     onError: (_err, _vars, context) => {
       if (context) {
         qc.setQueryData(context.queryKey, context.previousMessages);
       }
     },
-    // After success or error, always refetch to sync with server
     onSettled: (_data, _err, variables) => {
       qc.invalidateQueries({
         queryKey: ["messages", myAddress, variables.contactAddress]
@@ -46646,7 +46641,8 @@ function useHoosatBalance(address) {
       return 0;
     },
     enabled: !!address,
-    refetchInterval: 3e4
+    refetchInterval: 3e4,
+    staleTime: 2e4
   });
 }
 const STORAGE_KEY = "hbeam_encrypted_wallet";
