@@ -1,8 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Plus Jakarta Sans is loaded async via <link> in index.html for non-blocking paint.
+   font-display:swap is declared here so system font shows immediately. */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local("Plus Jakarta Sans");
+}
 
 @layer base {
   :root {

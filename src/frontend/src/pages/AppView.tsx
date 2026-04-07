@@ -35,7 +35,7 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PaymentStatus } from "../backend";
 import type { Contact, MessagePublic } from "../backend.d.ts";
@@ -664,7 +664,7 @@ function SendHTNModal({
 }
 
 // Message bubble component
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   msg,
   myAddress,
   onReact,
@@ -812,7 +812,7 @@ function MessageBubble({
       </div>
     </div>
   );
-}
+});
 
 // Main app view
 export function AppView({
@@ -840,6 +840,7 @@ export function AppView({
   );
   const setTypingMutation = useSetTypingStatus(myAddress);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Presence
   const { data: contacts = [], isLoading: contactsLoading } =
@@ -865,13 +866,22 @@ export function AppView({
   const [sendOpen, setSendOpen] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("contacts");
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll: only on initial load and when user sends a message themselves
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesCount = messages.length;
+  const prevContactRef = useRef<string | null>(null);
+  const userSentRef = useRef(false);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll anchor
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messagesCount]);
+    const contactChanged =
+      prevContactRef.current !== (selectedContact?.address ?? null);
+    prevContactRef.current = selectedContact?.address ?? null;
+    if (contactChanged || userSentRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      userSentRef.current = false;
+    }
+  }, [messagesCount, selectedContact?.address]);
 
   // Set presence on mount
   // biome-ignore lint/correctness/useExhaustiveDependencies: run once
@@ -898,16 +908,18 @@ export function AppView({
     }
   }, [selectedContact?.address, messagesCount]);
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     const text = input.trim();
     if (!text || !selectedContact) return;
     setInput("");
     // Stop typing indicator
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     setTypingMutation.mutate({
       contactAddress: selectedContact.address,
       isTyping: false,
     });
+    userSentRef.current = true;
     try {
       await sendMessageMutation.mutateAsync({
         content: text,
@@ -916,35 +928,49 @@ export function AppView({
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to send message");
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, selectedContact, sendMessageMutation, setTypingMutation]);
 
-  const handleInputChange = (val: string) => {
-    setInput(val);
-    if (!selectedContact) return;
-    // Debounce typing indicator
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    setTypingMutation.mutate({
-      contactAddress: selectedContact.address,
-      isTyping: true,
-    });
-    typingTimerRef.current = setTimeout(() => {
-      setTypingMutation.mutate({
+  const handleInputChange = useCallback(
+    (val: string) => {
+      setInput(val);
+      if (!selectedContact) return;
+      // Clear previous debounce timer
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      // Clear the old stop-typing timer
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      // Debounce: only fire setTyping(true) after 500ms pause
+      debounceTimerRef.current = setTimeout(() => {
+        setTypingMutation.mutate({
+          contactAddress: selectedContact.address,
+          isTyping: true,
+        });
+        // Auto-clear typing after 3s of no activity
+        typingTimerRef.current = setTimeout(() => {
+          setTypingMutation.mutate({
+            contactAddress: selectedContact.address,
+            isTyping: false,
+          });
+        }, 3000);
+      }, 500);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [selectedContact, setTypingMutation],
+  );
+
+  const handleReact = useCallback(
+    (messageId: string, emoji: string) => {
+      if (!selectedContact) return;
+      addReactionMutation.mutate({
         contactAddress: selectedContact.address,
-        isTyping: false,
+        messageId,
+        emoji,
       });
-    }, 2000);
-  };
+    },
+    [selectedContact, addReactionMutation],
+  );
 
-  const handleReact = (messageId: string, emoji: string) => {
-    if (!selectedContact) return;
-    addReactionMutation.mutate({
-      contactAddress: selectedContact.address,
-      messageId,
-      emoji,
-    });
-  };
-
-  const handleAddContact = async () => {
+  const handleAddContact = useCallback(async () => {
     if (!newContactAddr) return;
     const name = newContactName || `${newContactAddr.slice(0, 16)}...`;
     try {
@@ -959,29 +985,38 @@ export function AppView({
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to add contact");
     }
-  };
+  }, [newContactAddr, newContactName, addContact]);
 
-  const handleRemoveContact = async (addr: string) => {
-    try {
-      await removeContact.mutateAsync(addr);
-      if (selectedContact?.address === addr) setSelectedContact(null);
-      toast.success("Contact removed");
-    } catch {
-      toast.error("Failed to remove contact");
-    }
-  };
+  const handleRemoveContact = useCallback(
+    async (addr: string) => {
+      try {
+        await removeContact.mutateAsync(addr);
+        if (selectedContact?.address === addr) setSelectedContact(null);
+        toast.success("Contact removed");
+      } catch {
+        toast.error("Failed to remove contact");
+      }
+    },
+    [removeContact, selectedContact?.address],
+  );
 
-  const selectContact = (contact: Contact) => {
+  const selectContact = useCallback((contact: Contact) => {
     setSelectedContact(contact);
     setMobileView("chat");
-  };
+  }, []);
 
-  const isContactOnline = (addr: string) =>
-    presenceRecords.some((r) => r.userId === addr && r.isOnline);
+  const isContactOnline = useCallback(
+    (addr: string) =>
+      presenceRecords.some((r) => r.userId === addr && r.isOnline),
+    [presenceRecords],
+  );
 
-  const isContactTyping =
-    selectedContact &&
-    typingUsers.some((u) => u !== myAddress && u === selectedContact.address);
+  const isContactTyping = useMemo(
+    () =>
+      selectedContact != null &&
+      typingUsers.some((u) => u !== myAddress && u === selectedContact.address),
+    [selectedContact, typingUsers, myAddress],
+  );
 
   return (
     <div

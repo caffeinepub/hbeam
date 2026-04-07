@@ -17,7 +17,23 @@ export default defineConfig({
   build: {
     emptyOutDir: true,
     sourcemap: false,
-    minify: false,
+    minify: "esbuild",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-dfinity": [
+            "@dfinity/agent",
+            "@dfinity/auth-client",
+            "@dfinity/identity",
+            "@dfinity/candid",
+            "@dfinity/principal",
+          ],
+          "vendor-motion": ["motion/react"],
+        },
+      },
+    },
   },
   css: {
     postcss: "./postcss.config.js",

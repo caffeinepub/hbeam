@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { MessageType } from "../backend";
 import type {
   Contact,
@@ -25,7 +26,7 @@ export function useGetContacts(userAddress: string) {
       return actor.getContacts(userAddress);
     },
     enabled: !!actor && !isFetching && !!userAddress,
-    staleTime: 30_000,
+    staleTime: 120_000,
     retry: 3,
     retryDelay: 1000,
   });
@@ -67,7 +68,7 @@ export function useRemoveContact(userAddress: string) {
 
 export function useGetMessages(myAddress: string, contactAddress: string) {
   const { actor, isFetching } = useActor();
-  return useQuery<MessagePublic[]>({
+  const query = useQuery<MessagePublic[]>({
     queryKey: ["messages", myAddress, contactAddress],
     queryFn: async () => {
       if (!actor || !myAddress || !contactAddress) return [];
@@ -77,17 +78,24 @@ export function useGetMessages(myAddress: string, contactAddress: string) {
         null,
         null,
       );
-      return [...msgs].sort((a, b) =>
-        a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0,
-      );
+      return msgs as MessagePublic[];
     },
     enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
-    refetchInterval: 2000,
+    refetchInterval: 8000,
     staleTime: 0,
     placeholderData: (prev) => prev,
     retry: 3,
     retryDelay: 1000,
   });
+
+  const sortedData = useMemo(() => {
+    if (!query.data) return query.data;
+    return [...query.data].sort((a, b) =>
+      a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0,
+    );
+  }, [query.data]);
+
+  return { ...query, data: sortedData ?? ([] as MessagePublic[]) };
 }
 
 export function useSendMessage(myAddress: string) {
@@ -239,7 +247,7 @@ export function useTypingStatus(myAddress: string, contactAddress: string) {
       return actor.getTypingStatus(cid);
     },
     enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
-    refetchInterval: 1000,
+    refetchInterval: 3000,
     staleTime: 0,
     retry: 2,
     retryDelay: 500,
@@ -272,7 +280,7 @@ export function usePresence(myAddress: string, contactAddresses: string[]) {
     },
     enabled:
       !!actor && !isFetching && !!myAddress && contactAddresses.length > 0,
-    refetchInterval: 3000,
+    refetchInterval: 8000,
     retry: 2,
     retryDelay: 1000,
   });

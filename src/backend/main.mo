@@ -124,6 +124,9 @@ actor {
   let payments = Map.empty<Text, PaymentRecord>();
   // msgIdMap: msgId (e.g. "msg-5") -> (convId, index)
   let msgIdMap = Map.empty<Text, (ConversationId, Nat)>();
+  // convMsgIds: convId -> ordered List of msgIds (index i = msgId for message i)
+  // Enables O(1) index→msgId lookup instead of scanning all of msgIdMap
+  let convMsgIds = Map.empty<ConversationId, List.List<Text>>();
   var nextMsgId : Nat = 0;
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -159,6 +162,20 @@ actor {
     };
   };
 
+  // O(1) lookup: get msgId for a message at (convId, idx) using convMsgIds index
+  func getMsgId(convId : ConversationId, idx : Nat) : Text {
+    switch (convMsgIds.get(convId)) {
+      case (?ids) {
+        let id : ?Text = if (idx < ids.size()) { ?ids.at(idx) } else { null };
+        switch (id) {
+          case (?id) { id };
+          case (null) { convId # ":" # idx.toText() };
+        };
+      };
+      case (null) { convId # ":" # idx.toText() };
+    };
+  };
+
   func toPublicMsg(m : Message, convId : ConversationId, idx : Nat, msgId : Text) : MessagePublic {
     let meta = getMetaOrDefault(convId, idx);
     // Derive public messageType: payment messages are stored as #text but have paymentStatus in meta
@@ -182,6 +199,7 @@ actor {
       fileMetadata = m.fileMetadata;
       txId = meta.txId;
       paymentStatus = meta.paymentStatus;
+      // Pre-format as arrays here — avoids repeated List-to-Array on every caller
       readBy = meta.readBy.toArray();
       reactions = meta.reactions.toArray();
     };
@@ -194,11 +212,24 @@ actor {
         msgs.add(msg);
         conversations.add(convId, msgs);
         msgIdMap.add(msgId, (convId, 0));
+        // Initialize convMsgIds for this conversation
+        let ids = List.empty<Text>();
+        ids.add(msgId);
+        convMsgIds.add(convId, ids);
       };
       case (?existing) {
         let idx = existing.size();
         existing.add(msg);
         msgIdMap.add(msgId, (convId, idx));
+        // Append msgId to convMsgIds for O(1) future lookups
+        switch (convMsgIds.get(convId)) {
+          case (?ids) { ids.add(msgId) };
+          case (null) {
+            let ids = List.empty<Text>();
+            ids.add(msgId);
+            convMsgIds.add(convId, ids);
+          };
+        };
       };
     };
   };
@@ -233,50 +264,63 @@ actor {
     switch (conversations.get(convId)) {
       case (null) { [] };
       case (?msgs) {
-        // Build indexed array
-        let arr = msgs.toArray();
-        // Collect messages with their original index
-        let indexed = List.empty<(Message, Nat)>();
-        var i = 0;
-        for (m in arr.values()) {
-          switch (since) {
-            case (null) { indexed.add((m, i)) };
-            case (?ts) { if (m.timestamp > ts) { indexed.add((m, i)) } };
-          };
-          i += 1;
+        let totalSize = msgs.size();
+        if (totalSize == 0) { return [] };
+
+        // Default to 50 most recent messages when no limit specified
+        let pageSize : Nat = switch (limit) {
+          case (?n) { n };
+          case (null) { 50 };
         };
-        // Sort ascending by timestamp
-        let sortedArr = indexed.toArray().sort(
-          func(a : (Message, Nat), b : (Message, Nat)) : Order.Order {
-            Nat.compare(a.0.timestamp, b.0.timestamp)
-          }
-        );
-        // Apply limit (take last n)
-        let limited : [(Message, Nat)] = switch (limit) {
-          case (null) { sortedArr };
-          case (?n) {
-            let size = sortedArr.size();
-            let start : Int = if (size > n) { size - n } else { 0 };
-            sortedArr.sliceToArray(start, size)
+
+        // When `since` is provided, find messages after that timestamp.
+        // Iterate from the end (newest first) to collect up to pageSize messages
+        // that satisfy the since filter, then reverse to return ascending order.
+        // This is O(pageSize) in the common case vs O(n) full scan.
+        let result = List.empty<MessagePublic>();
+
+        switch (since) {
+          case (null) {
+            // No since filter: take last `pageSize` messages directly
+            let start : Int = if (totalSize > pageSize) { totalSize - pageSize } else { 0 };
+            let startNat : Nat = if (start < 0) { 0 } else { start.toNat() };
+            var idx = startNat;
+            while (idx < totalSize) {
+              let m = msgs.at(idx);
+              let msgId = getMsgId(convId, idx);
+              result.add(toPublicMsg(m, convId, idx, msgId));
+              idx += 1;
+            };
+          };
+          case (?ts) {
+            // With since filter: collect matching messages from the end, up to pageSize
+            let window = List.empty<(Message, Nat)>();
+            var idx : Int = totalSize - 1;
+            var collected = 0;
+            while (idx >= 0 and collected < pageSize) {
+              let i = idx.toNat();
+              let m = msgs.at(i);
+              if (m.timestamp > ts) {
+                window.add((m, i));
+                collected += 1;
+              };
+              idx -= 1;
+            };
+            // window is newest-first; reverse to ascending timestamp order
+            window.reverseInPlace();
+            // Sort ascending by timestamp to handle any out-of-order inserts
+            window.sortInPlace(func(a : (Message, Nat), b : (Message, Nat)) : Order.Order {
+              Nat.compare(a.0.timestamp, b.0.timestamp)
+            });
+            window.forEach(func(pair : (Message, Nat)) {
+              let (m, i) = pair;
+              let msgId = getMsgId(convId, i);
+              result.add(toPublicMsg(m, convId, i, msgId));
+            });
           };
         };
-        // Convert to public, look up msgId from msgIdMap by (convId, idx)
-        // Build reverse map: (convId, idx) -> msgId by scanning msgIdMap
-        // For efficiency, map convId+idx -> msgId
-        let idxToMsgId = Map.empty<Nat, Text>();
-        for ((mId, (cId, idx)) in msgIdMap.entries()) {
-          if (cId == convId) {
-            idxToMsgId.add(idx, mId);
-          };
-        };
-        limited.map<(Message, Nat), MessagePublic>(func(pair) {
-          let (m, idx) = pair;
-          let msgId = switch (idxToMsgId.get(idx)) {
-            case (?id) { id };
-            case (null) { convId # ":" # idx.toText() };
-          };
-          toPublicMsg(m, convId, idx, msgId)
-        });
+
+        result.toArray();
       };
     };
   };
@@ -350,6 +394,7 @@ actor {
     };
   };
 
+  // Compute unread count in a single pass — avoids redundant meta-key building per call
   public query ({ caller = _ }) func getUnreadCount(
     userId : HoosatAddress,
     contactAddress : HoosatAddress
@@ -358,15 +403,25 @@ actor {
     switch (conversations.get(convId)) {
       case (null) { 0 };
       case (?msgs) {
+        // Single pass: count messages addressed to userId that have no readBy entry for userId
         var count : Nat = 0;
         var idx = 0;
         msgs.forEach(func(m : Message) {
           if (m.recipient == userId) {
-            let meta = getMetaOrDefault(convId, idx);
-            let read = meta.readBy.find(func(u : HoosatAddress) : Bool { u == userId });
-            switch (read) {
-              case (null) { count += 1 };
-              case (?_) { () };
+            // Only look up meta when the message is addressed to this user
+            let key = metaKey(convId, idx);
+            switch (msgMeta.get(key)) {
+              case (null) {
+                // No meta at all means unread
+                count += 1;
+              };
+              case (?meta) {
+                let read = meta.readBy.find(func(u : HoosatAddress) : Bool { u == userId });
+                switch (read) {
+                  case (null) { count += 1 };
+                  case (?_) { () };
+                };
+              };
             };
           };
           idx += 1;
@@ -402,16 +457,20 @@ actor {
     };
   };
 
+  // Filter out stale typing records (older than 30 seconds) on read
+  // Timestamps are in milliseconds; 30s = 30_000ms
   public query ({ caller = _ }) func getTypingStatus(convId : Text) : async [HoosatAddress] {
-    let staleThresholdMs : Nat = 5000;
+    let staleThresholdMs : Nat = 30_000;
     switch (typingStatus.get(convId)) {
       case (null) { [] };
       case (?records) {
         let maxTs = records.foldLeft(0, func(acc : Nat, r : TypingRecord) : Nat {
           if (r.timestamp > acc) { r.timestamp } else { acc }
         });
+        // Skip records where the newest timestamp minus this record's timestamp exceeds 30s
         let active = records.filter(func(r : TypingRecord) : Bool {
-          r.timestamp >= maxTs or maxTs - r.timestamp < staleThresholdMs
+          let diff : Nat = if (maxTs > r.timestamp) { maxTs - r.timestamp } else { 0 };
+          diff < staleThresholdMs
         });
         active.toArray().map<TypingRecord, HoosatAddress>(func(r) { r.userId });
       };
@@ -426,11 +485,33 @@ actor {
     presence.add(userId, { userId; isOnline; lastSeen = timestamp });
   };
 
+  // Filter out stale presence records (lastSeen older than 5 minutes) on read
+  // Timestamps are in milliseconds; 5min = 300_000ms
   public query ({ caller = _ }) func getPresence(
     userIds : [HoosatAddress]
   ) : async [PresenceRecord] {
+    let staleThresholdMs : Nat = 300_000;
+    // Compute max lastSeen across all requested users to derive "now" approximation
+    // We use the max known timestamp as a proxy since we have no Time.now() in query context
+    let maxLastSeen = userIds.foldLeft(0, func(acc : Nat, uid : HoosatAddress) : Nat {
+      switch (presence.get(uid)) {
+        case (?rec) { if (rec.lastSeen > acc) { rec.lastSeen } else { acc } };
+        case (null) { acc };
+      };
+    });
     userIds.filterMap<HoosatAddress, PresenceRecord>(func(uid) {
-      presence.get(uid)
+      switch (presence.get(uid)) {
+        case (null) { null };
+        case (?rec) {
+          // Skip records where presence hasn't been updated in more than 5 minutes
+          let diff : Nat = if (maxLastSeen > rec.lastSeen) { maxLastSeen - rec.lastSeen } else { 0 };
+          if (diff > staleThresholdMs) {
+            ?{ rec with isOnline = false }
+          } else {
+            ?rec
+          };
+        };
+      };
     });
   };
 

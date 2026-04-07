@@ -64,6 +64,12 @@ actor {
                         List__415060402<Contact__891480783>>;
       var size : Nat__490723111
     };
+  stable convMsgIds :
+    {
+      var root :
+        Node__46230540<ConversationId__59272760, List__415060402<Text>>;
+      var size : Nat__490723111
+    };
   stable conversations :
     {
       var root :
