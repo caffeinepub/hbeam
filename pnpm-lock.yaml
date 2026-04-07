@@ -141,7 +141,7 @@ importers:
         specifier: ^8.2.1
         version: 8.6.0(react@19.1.1)
       hoosat-sdk-web:
-        specifier: 0.1.7
+        specifier: ^0.1.7
         version: 0.1.7
       input-otp:
         specifier: ^1.4.1
