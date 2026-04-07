@@ -109,7 +109,7 @@
 }
 
 /*
-! tailwindcss v3.4.18 | MIT License | https://tailwindcss.com
+! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com
 */
 
 /*
@@ -629,6 +629,10 @@ body{
 
 .bottom-0{
   bottom: 0px;
+}
+
+.bottom-full{
+  bottom: 100%;
 }
 
 .left-0{
@@ -1371,6 +1375,23 @@ body{
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
+@keyframes bounce{
+
+  0%, 100%{
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8,0,1,1);
+  }
+
+  50%{
+    transform: none;
+    animation-timing-function: cubic-bezier(0,0,0.2,1);
+  }
+}
+
+.animate-bounce{
+  animation: bounce 1s infinite;
+}
+
 @keyframes float{
 
   0%, 100%{
@@ -1717,6 +1738,10 @@ body{
 
 .border{
   border-width: 1px;
+}
+
+.border-2{
+  border-width: 2px;
 }
 
 .border-\[1\.5px\]{
@@ -2121,6 +2146,10 @@ body{
   font-size: 11px;
 }
 
+.text-\[12px\]{
+  font-size: 12px;
+}
+
 .text-base{
   font-size: 1rem;
   line-height: 1.5rem;
@@ -2280,10 +2309,6 @@ body{
 
 .opacity-50{
   opacity: 0.5;
-}
-
-.opacity-60{
-  opacity: 0.6;
 }
 
 .opacity-70{
@@ -2538,10 +2563,6 @@ body{
   animation-timing-function: linear;
 }
 
-.running{
-  animation-play-state: running;
-}
-
 .glass-card {
     background: oklch(0.16 0.014 240 / 0.7);
     backdrop-filter: blur(16px);
@@ -2703,6 +2724,12 @@ body{
   border-bottom-width: 0px;
 }
 
+.hover\:scale-125:hover{
+  --tw-scale-x: 1.25;
+  --tw-scale-y: 1.25;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
 .hover\:bg-accent:hover{
   --tw-bg-opacity: 1;
   background-color: oklch(var(--accent) / var(--tw-bg-opacity, 1));
@@ -2767,8 +2794,16 @@ body{
   text-decoration-line: underline;
 }
 
+.hover\:\!opacity-100:hover{
+  opacity: 1 !important;
+}
+
 .hover\:opacity-100:hover{
   opacity: 1;
+}
+
+.hover\:opacity-80:hover{
+  opacity: 0.8;
 }
 
 .hover\:opacity-90:hover{
@@ -2912,6 +2947,10 @@ body{
 
 .group:hover .group-hover\:opacity-100{
   opacity: 1;
+}
+
+.group:hover .group-hover\:opacity-60{
+  opacity: 0.6;
 }
 
 .peer\/menu-button:hover ~ .peer-hover\/menu-button\:text-sidebar-accent-foreground{

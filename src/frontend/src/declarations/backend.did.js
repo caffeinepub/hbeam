@@ -17,34 +17,134 @@ export const Contact = IDL.Record({
   'displayName' : IDL.Text,
   'address' : HoosatAddress,
 });
-export const MessageType = IDL.Variant({
-  'text' : IDL.Null,
-  'file' : IDL.Null,
+export const PaymentStatus = IDL.Variant({
+  'broadcasted' : IDL.Null,
+  'pending' : IDL.Null,
+  'confirmed' : IDL.Null,
+  'failed' : IDL.Null,
+});
+export const MessageTypePublic = IDL.Variant({
   'voice' : IDL.Null,
+  'file' : IDL.Null,
+  'text' : IDL.Null,
+  'payment' : IDL.Null,
 });
 export const FileMetadata = IDL.Record({
   'fileName' : IDL.Text,
   'fileSize' : IDL.Nat,
   'fileType' : IDL.Text,
 });
-export const Message = IDL.Record({
-  'sender' : IDL.Text,
-  'recipient' : IDL.Text,
-  'content' : IDL.Text,
+export const Reaction = IDL.Record({
+  'userId' : HoosatAddress,
+  'emoji' : IDL.Text,
   'timestamp' : IDL.Nat,
-  'messageType' : MessageType,
+});
+export const MessagePublic = IDL.Record({
+  'id' : IDL.Text,
+  'paymentStatus' : IDL.Opt(PaymentStatus),
+  'content' : IDL.Text,
+  'txId' : IDL.Opt(IDL.Text),
+  'recipient' : HoosatAddress,
+  'sender' : HoosatAddress,
+  'messageType' : MessageTypePublic,
   'fileMetadata' : IDL.Opt(FileMetadata),
+  'timestamp' : IDL.Nat,
+  'reactions' : IDL.Vec(Reaction),
+  'readBy' : IDL.Vec(HoosatAddress),
+});
+export const PaymentRecord = IDL.Record({
+  'status' : PaymentStatus,
+  'messageId' : IDL.Text,
+  'createdAt' : IDL.Nat,
+  'txId' : IDL.Text,
+  'recipient' : HoosatAddress,
+  'sender' : HoosatAddress,
+  'updatedAt' : IDL.Nat,
+  'amount' : IDL.Text,
+});
+export const PresenceRecord = IDL.Record({
+  'userId' : HoosatAddress,
+  'isOnline' : IDL.Bool,
+  'lastSeen' : IDL.Nat,
+});
+export const MessageType = IDL.Variant({
+  'voice' : IDL.Null,
+  'file' : IDL.Null,
+  'text' : IDL.Null,
 });
 
 export const idlService = IDL.Service({
   'addContact' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text], [], []),
+  'addReaction' : IDL.Func(
+      [HoosatAddress, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+      [],
+      [],
+    ),
+  'createPaymentMessage' : IDL.Func(
+      [HoosatAddress, HoosatAddress, IDL.Text, IDL.Nat],
+      [IDL.Text],
+      [],
+    ),
   'getAllWalletAddresses' : IDL.Func([], [IDL.Vec(WalletAddress)], ['query']),
   'getContacts' : IDL.Func([HoosatAddress], [IDL.Vec(Contact)], ['query']),
-  'getMessages' : IDL.Func([HoosatAddress, HoosatAddress], [IDL.Vec(Message)], ['query']),
+  'getMessages' : IDL.Func(
+      [HoosatAddress, HoosatAddress, IDL.Opt(IDL.Nat), IDL.Opt(IDL.Nat)],
+      [IDL.Vec(MessagePublic)],
+      ['query'],
+    ),
+  'getPaymentHistory' : IDL.Func(
+      [HoosatAddress],
+      [IDL.Vec(PaymentRecord)],
+      ['query'],
+    ),
+  'getPaymentStatus' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(IDL.Tuple(PaymentStatus, IDL.Text))],
+      ['query'],
+    ),
+  'getPresence' : IDL.Func(
+      [IDL.Vec(HoosatAddress)],
+      [IDL.Vec(PresenceRecord)],
+      ['query'],
+    ),
+  'getTypingStatus' : IDL.Func([IDL.Text], [IDL.Vec(HoosatAddress)], ['query']),
+  'getUnreadCount' : IDL.Func(
+      [HoosatAddress, HoosatAddress],
+      [IDL.Nat],
+      ['query'],
+    ),
   'getWalletAddress' : IDL.Func([IDL.Principal], [HoosatAddress], ['query']),
+  'markMessagesRead' : IDL.Func([HoosatAddress, IDL.Text, IDL.Nat], [], []),
   'registerWalletAddress' : IDL.Func([HoosatAddress], [], []),
   'removeContact' : IDL.Func([HoosatAddress, HoosatAddress], [], []),
-  'sendMessage' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text, IDL.Nat], [], []),
+  'removeReaction' : IDL.Func(
+      [HoosatAddress, IDL.Text, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
+  'sendMessage' : IDL.Func(
+      [
+        HoosatAddress,
+        HoosatAddress,
+        IDL.Text,
+        IDL.Nat,
+        MessageType,
+        IDL.Opt(FileMetadata),
+      ],
+      [IDL.Text],
+      [],
+    ),
+  'setPresence' : IDL.Func([HoosatAddress, IDL.Bool, IDL.Nat], [], []),
+  'setTypingStatus' : IDL.Func(
+      [HoosatAddress, IDL.Text, IDL.Bool, IDL.Nat],
+      [],
+      [],
+    ),
+  'updatePaymentStatus' : IDL.Func(
+      [IDL.Text, IDL.Text, PaymentStatus, IDL.Nat],
+      [],
+      [],
+    ),
 });
 
 export const idlInitArgs = [];
@@ -59,34 +159,138 @@ export const idlFactory = ({ IDL }) => {
     'displayName' : IDL.Text,
     'address' : HoosatAddress,
   });
-  const MessageType = IDL.Variant({
-    'text' : IDL.Null,
-    'file' : IDL.Null,
+  const PaymentStatus = IDL.Variant({
+    'broadcasted' : IDL.Null,
+    'pending' : IDL.Null,
+    'confirmed' : IDL.Null,
+    'failed' : IDL.Null,
+  });
+  const MessageTypePublic = IDL.Variant({
     'voice' : IDL.Null,
+    'file' : IDL.Null,
+    'text' : IDL.Null,
+    'payment' : IDL.Null,
   });
   const FileMetadata = IDL.Record({
     'fileName' : IDL.Text,
     'fileSize' : IDL.Nat,
     'fileType' : IDL.Text,
   });
-  const Message = IDL.Record({
-    'sender' : IDL.Text,
-    'recipient' : IDL.Text,
-    'content' : IDL.Text,
+  const Reaction = IDL.Record({
+    'userId' : HoosatAddress,
+    'emoji' : IDL.Text,
     'timestamp' : IDL.Nat,
-    'messageType' : MessageType,
+  });
+  const MessagePublic = IDL.Record({
+    'id' : IDL.Text,
+    'paymentStatus' : IDL.Opt(PaymentStatus),
+    'content' : IDL.Text,
+    'txId' : IDL.Opt(IDL.Text),
+    'recipient' : HoosatAddress,
+    'sender' : HoosatAddress,
+    'messageType' : MessageTypePublic,
     'fileMetadata' : IDL.Opt(FileMetadata),
+    'timestamp' : IDL.Nat,
+    'reactions' : IDL.Vec(Reaction),
+    'readBy' : IDL.Vec(HoosatAddress),
+  });
+  const PaymentRecord = IDL.Record({
+    'status' : PaymentStatus,
+    'messageId' : IDL.Text,
+    'createdAt' : IDL.Nat,
+    'txId' : IDL.Text,
+    'recipient' : HoosatAddress,
+    'sender' : HoosatAddress,
+    'updatedAt' : IDL.Nat,
+    'amount' : IDL.Text,
+  });
+  const PresenceRecord = IDL.Record({
+    'userId' : HoosatAddress,
+    'isOnline' : IDL.Bool,
+    'lastSeen' : IDL.Nat,
+  });
+  const MessageType = IDL.Variant({
+    'voice' : IDL.Null,
+    'file' : IDL.Null,
+    'text' : IDL.Null,
   });
   
   return IDL.Service({
     'addContact' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text], [], []),
+    'addReaction' : IDL.Func(
+        [HoosatAddress, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+        [],
+        [],
+      ),
+    'createPaymentMessage' : IDL.Func(
+        [HoosatAddress, HoosatAddress, IDL.Text, IDL.Nat],
+        [IDL.Text],
+        [],
+      ),
     'getAllWalletAddresses' : IDL.Func([], [IDL.Vec(WalletAddress)], ['query']),
     'getContacts' : IDL.Func([HoosatAddress], [IDL.Vec(Contact)], ['query']),
-    'getMessages' : IDL.Func([HoosatAddress, HoosatAddress], [IDL.Vec(Message)], ['query']),
+    'getMessages' : IDL.Func(
+        [HoosatAddress, HoosatAddress, IDL.Opt(IDL.Nat), IDL.Opt(IDL.Nat)],
+        [IDL.Vec(MessagePublic)],
+        ['query'],
+      ),
+    'getPaymentHistory' : IDL.Func(
+        [HoosatAddress],
+        [IDL.Vec(PaymentRecord)],
+        ['query'],
+      ),
+    'getPaymentStatus' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(IDL.Tuple(PaymentStatus, IDL.Text))],
+        ['query'],
+      ),
+    'getPresence' : IDL.Func(
+        [IDL.Vec(HoosatAddress)],
+        [IDL.Vec(PresenceRecord)],
+        ['query'],
+      ),
+    'getTypingStatus' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(HoosatAddress)],
+        ['query'],
+      ),
+    'getUnreadCount' : IDL.Func(
+        [HoosatAddress, HoosatAddress],
+        [IDL.Nat],
+        ['query'],
+      ),
     'getWalletAddress' : IDL.Func([IDL.Principal], [HoosatAddress], ['query']),
+    'markMessagesRead' : IDL.Func([HoosatAddress, IDL.Text, IDL.Nat], [], []),
     'registerWalletAddress' : IDL.Func([HoosatAddress], [], []),
     'removeContact' : IDL.Func([HoosatAddress, HoosatAddress], [], []),
-    'sendMessage' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text, IDL.Nat], [], []),
+    'removeReaction' : IDL.Func(
+        [HoosatAddress, IDL.Text, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
+    'sendMessage' : IDL.Func(
+        [
+          HoosatAddress,
+          HoosatAddress,
+          IDL.Text,
+          IDL.Nat,
+          MessageType,
+          IDL.Opt(FileMetadata),
+        ],
+        [IDL.Text],
+        [],
+      ),
+    'setPresence' : IDL.Func([HoosatAddress, IDL.Bool, IDL.Nat], [], []),
+    'setTypingStatus' : IDL.Func(
+        [HoosatAddress, IDL.Text, IDL.Bool, IDL.Nat],
+        [],
+        [],
+      ),
+    'updatePaymentStatus' : IDL.Func(
+        [IDL.Text, IDL.Text, PaymentStatus, IDL.Nat],
+        [],
+        [],
+      ),
   });
 };
 

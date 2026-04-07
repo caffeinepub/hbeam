@@ -11,16 +11,55 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export interface Contact { 'displayName' : string, 'address' : HoosatAddress }
+export interface FileMetadata {
+  'fileName' : string,
+  'fileSize' : bigint,
+  'fileType' : string,
+}
 export type HoosatAddress = string;
-export interface FileMetadata { 'fileName' : string, 'fileSize' : bigint, 'fileType' : string }
-export type MessageType = { 'text' : null } | { 'file' : null } | { 'voice' : null };
-export interface Message {
-  'sender' : HoosatAddress,
-  'recipient' : HoosatAddress,
+export interface MessagePublic {
+  'id' : string,
+  'paymentStatus' : [] | [PaymentStatus],
   'content' : string,
-  'timestamp' : bigint,
-  'messageType' : MessageType,
+  'txId' : [] | [string],
+  'recipient' : HoosatAddress,
+  'sender' : HoosatAddress,
+  'messageType' : MessageTypePublic,
   'fileMetadata' : [] | [FileMetadata],
+  'timestamp' : bigint,
+  'reactions' : Array<Reaction>,
+  'readBy' : Array<HoosatAddress>,
+}
+export type MessageType = { 'voice' : null } |
+  { 'file' : null } |
+  { 'text' : null };
+export type MessageTypePublic = { 'voice' : null } |
+  { 'file' : null } |
+  { 'text' : null } |
+  { 'payment' : null };
+export interface PaymentRecord {
+  'status' : PaymentStatus,
+  'messageId' : string,
+  'createdAt' : bigint,
+  'txId' : string,
+  'recipient' : HoosatAddress,
+  'sender' : HoosatAddress,
+  'updatedAt' : bigint,
+  'amount' : string,
+}
+export type PaymentStatus = { 'broadcasted' : null } |
+  { 'pending' : null } |
+  { 'confirmed' : null } |
+  { 'failed' : null };
+export interface PresenceRecord {
+  'userId' : HoosatAddress,
+  'isOnline' : boolean,
+  'lastSeen' : bigint,
+}
+export interface Reaction {
+  'userId' : HoosatAddress,
+  'emoji' : string,
+  'timestamp' : bigint,
 }
 export interface WalletAddress {
   'principal' : Principal,
@@ -28,13 +67,53 @@ export interface WalletAddress {
 }
 export interface _SERVICE {
   'addContact' : ActorMethod<[HoosatAddress, HoosatAddress, string], undefined>,
+  'addReaction' : ActorMethod<
+    [HoosatAddress, string, string, string, bigint],
+    undefined
+  >,
+  'createPaymentMessage' : ActorMethod<
+    [HoosatAddress, HoosatAddress, string, bigint],
+    string
+  >,
   'getAllWalletAddresses' : ActorMethod<[], Array<WalletAddress>>,
   'getContacts' : ActorMethod<[HoosatAddress], Array<Contact>>,
-  'getMessages' : ActorMethod<[HoosatAddress, HoosatAddress], Array<Message>>,
+  'getMessages' : ActorMethod<
+    [HoosatAddress, HoosatAddress, [] | [bigint], [] | [bigint]],
+    Array<MessagePublic>
+  >,
+  'getPaymentHistory' : ActorMethod<[HoosatAddress], Array<PaymentRecord>>,
+  'getPaymentStatus' : ActorMethod<[string], [] | [[PaymentStatus, string]]>,
+  'getPresence' : ActorMethod<[Array<HoosatAddress>], Array<PresenceRecord>>,
+  'getTypingStatus' : ActorMethod<[string], Array<HoosatAddress>>,
+  'getUnreadCount' : ActorMethod<[HoosatAddress, HoosatAddress], bigint>,
   'getWalletAddress' : ActorMethod<[Principal], HoosatAddress>,
+  'markMessagesRead' : ActorMethod<[HoosatAddress, string, bigint], undefined>,
   'registerWalletAddress' : ActorMethod<[HoosatAddress], undefined>,
   'removeContact' : ActorMethod<[HoosatAddress, HoosatAddress], undefined>,
-  'sendMessage' : ActorMethod<[HoosatAddress, HoosatAddress, string, bigint], undefined>,
+  'removeReaction' : ActorMethod<
+    [HoosatAddress, string, string, string],
+    undefined
+  >,
+  'sendMessage' : ActorMethod<
+    [
+      HoosatAddress,
+      HoosatAddress,
+      string,
+      bigint,
+      MessageType,
+      [] | [FileMetadata],
+    ],
+    string
+  >,
+  'setPresence' : ActorMethod<[HoosatAddress, boolean, bigint], undefined>,
+  'setTypingStatus' : ActorMethod<
+    [HoosatAddress, string, boolean, bigint],
+    undefined
+  >,
+  'updatePaymentStatus' : ActorMethod<
+    [string, string, PaymentStatus, bigint],
+    undefined
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

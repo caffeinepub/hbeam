@@ -1,0 +1,25 @@
+{
+  "overview": "HBeam is a messaging and payments app built for the Hoosat blockchain. Users can generate or import a wallet, add contacts by Hoosat address, exchange instant messages with typing indicators and read receipts, and send HTN payments that are tracked from broadcast to blockchain confirmation.",
+  "features": [
+    "Wallet generation and import with encrypted private key storage",
+    "Contact management by Hoosat address",
+    "Real-time chat with 2-second polling, typing indicators, and read receipts",
+    "Emoji reactions on messages",
+    "HTN payment messages with status tracking: pending → broadcasted → confirmed",
+    "Media and voice message uploads",
+    "Contact presence (online/offline status)",
+    "Hoosat live balance display"
+  ],
+  "category": "messaging",
+  "tags": [
+    "hoosat",
+    "blockchain",
+    "messaging",
+    "payments",
+    "wallet",
+    "htn",
+    "chat",
+    "web3"
+  ],
+  "last_updated": "2026-04-07T17:19:01.780Z"
+}

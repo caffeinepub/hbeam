@@ -17,6 +17,7 @@ import {
 import {
   ArrowLeft,
   Check,
+  CheckCheck,
   Copy,
   Download,
   KeyRound,
@@ -31,36 +32,73 @@ import {
   Unlock,
   UserPlus,
   Wallet,
+  Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { Contact } from "../backend.d.ts";
+import { PaymentStatus } from "../backend";
+import type { Contact, MessagePublic } from "../backend.d.ts";
 import { useActor } from "../hooks/useActor";
 import {
   useAddContact,
+  useAddReaction,
+  useCreatePaymentMessage,
   useGetContacts,
   useGetMessages,
   useHoosatBalance,
+  useMarkMessagesRead,
+  usePresence,
   useRegisterWallet,
   useRemoveContact,
   useSendMessage,
+  useSetPresence,
+  useSetTypingStatus,
+  useTypingStatus,
+  useUpdatePaymentStatus,
 } from "../hooks/useQueries";
 import { useWallet } from "../hooks/useWallet";
 
-// Message type matching the backend schema
-type MessageType = { text: null } | { file: null } | { voice: null };
-interface BackendMessage {
-  sender: string;
-  recipient: string;
-  content: string;
-  timestamp: bigint;
-  messageType: MessageType;
-  fileMetadata: [] | [{ fileName: string; fileSize: bigint; fileType: string }];
-}
-
 type ConnectTab = "generate" | "import" | "unlock";
 type MobileView = "contacts" | "chat" | "wallet";
+
+// Payment status badge
+function PaymentBadge({ status }: { status: PaymentStatus | undefined }) {
+  if (!status) return null;
+  const map: Record<PaymentStatus, { label: string; color: string }> = {
+    [PaymentStatus.pending]: {
+      label: "Pending",
+      color: "oklch(0.75 0.15 60)",
+    },
+    [PaymentStatus.broadcasted]: {
+      label: "Broadcasted",
+      color: "oklch(0.75 0.15 220)",
+    },
+    [PaymentStatus.confirmed]: {
+      label: "Confirmed",
+      color: "oklch(0.82 0.19 152)",
+    },
+    [PaymentStatus.failed]: {
+      label: "Failed",
+      color: "oklch(0.65 0.18 25)",
+    },
+  };
+  const info = map[status];
+  if (!info) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+      style={{
+        background: `${info.color}20`,
+        color: info.color,
+        border: `1px solid ${info.color}40`,
+      }}
+    >
+      <Zap className="w-2.5 h-2.5" />
+      {info.label}
+    </span>
+  );
+}
 
 // Connect screen
 function ConnectScreen({
@@ -81,7 +119,7 @@ function ConnectScreen({
     try {
       await registerWallet.mutateAsync(addr);
     } catch {
-      // allow local usage
+      // allow local usage even if backend registration fails
     }
     onConnect(addr);
     toast.success("Wallet connected!");
@@ -96,8 +134,8 @@ function ConnectScreen({
     try {
       const addr = await wallet.generateWallet(password);
       await connectWithAddress(addr);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to generate wallet");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate wallet");
     } finally {
       setLoading(false);
     }
@@ -116,8 +154,8 @@ function ConnectScreen({
     try {
       const addr = await wallet.importWallet(importKey.trim(), password);
       await connectWithAddress(addr);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Invalid private key");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Invalid private key");
     } finally {
       setLoading(false);
     }
@@ -387,7 +425,7 @@ function ConnectScreen({
   );
 }
 
-// Send HTN modal
+// Send HTN modal (with payment message creation + status tracking)
 function SendHTNModal({
   myAddress,
   recipientAddress,
@@ -404,6 +442,8 @@ function SendHTNModal({
   const [sending, setSending] = useState(false);
   const [txId, setTxId] = useState<string | null>(null);
   const { data: balance } = useHoosatBalance(myAddress);
+  const createPaymentMessage = useCreatePaymentMessage();
+  const updatePaymentStatus = useUpdatePaymentStatus();
 
   if (!privateKey) {
     return (
@@ -502,7 +542,16 @@ function SendHTNModal({
       return;
     }
     setSending(true);
+    let msgId: string | null = null;
     try {
+      // 1. Create payment message in backend (pending)
+      msgId = await createPaymentMessage.mutateAsync({
+        sender: myAddress,
+        recipient,
+        amountHtn: amount,
+      });
+
+      // 2. Build & submit blockchain transaction
       const client = new HoosatWebClient({
         baseUrl: "https://proxy.hoosat.net/api/v1",
       });
@@ -511,16 +560,37 @@ function SendHTNModal({
       for (const utxo of utxosRes.utxos) {
         builder.addInput(utxo, privateKey);
       }
-      // Add recipient output first
       builder.addOutput(recipient, HoosatUtils.amountToSompi(amount));
-      // Calculate fee accounting for 2 outputs (recipient + change)
       const fee = HoosatCrypto.calculateMinFee(utxosRes.utxos.length, 2);
       builder.setFee(fee).addChangeOutput(myAddress);
       const signed = builder.sign();
       const result = await client.submitTransaction(signed);
-      setTxId(result.transactionId);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Transaction failed");
+      const submittedTxId = result.transactionId;
+      setTxId(submittedTxId);
+
+      // 3. Update payment status to broadcasted
+      if (msgId) {
+        await updatePaymentStatus.mutateAsync({
+          messageId: msgId,
+          txId: submittedTxId,
+          newStatus: PaymentStatus.broadcasted,
+        });
+      }
+    } catch (e: unknown) {
+      console.error("[SendHTN] error:", e);
+      // If transaction failed, mark as failed
+      if (msgId) {
+        try {
+          await updatePaymentStatus.mutateAsync({
+            messageId: msgId,
+            txId: "",
+            newStatus: PaymentStatus.failed,
+          });
+        } catch {
+          // ignore cleanup error
+        }
+      }
+      toast.error(e instanceof Error ? e.message : "Transaction failed");
     } finally {
       setSending(false);
     }
@@ -593,6 +663,157 @@ function SendHTNModal({
   );
 }
 
+// Message bubble component
+function MessageBubble({
+  msg,
+  myAddress,
+  onReact,
+}: {
+  msg: MessagePublic;
+  myAddress: string;
+  onReact?: (messageId: string, emoji: string) => void;
+}) {
+  const isMine = msg.sender === myAddress;
+  const isRead = msg.readBy.some((addr) => addr !== myAddress);
+  const [showReactions, setShowReactions] = useState(false);
+  const EMOJI_OPTIONS = ["❤️", "👍", "😂", "😮", "🎉", "🔥"];
+
+  const formatTime = (ts: bigint) =>
+    new Date(Number(ts)).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  return (
+    <div className={`flex ${isMine ? "justify-end" : "justify-start"} group`}>
+      <div className="max-w-[85%] sm:max-w-[72%]">
+        {/* Payment message */}
+        {msg.messageType === "payment" ? (
+          <div
+            className="rounded-2xl px-4 py-3 space-y-2"
+            style={{
+              background: isMine
+                ? "oklch(0.82 0.19 152 / 0.12)"
+                : "oklch(0.22 0.016 240)",
+              border: "1px solid oklch(0.82 0.19 152 / 0.25)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <Zap
+                className="w-4 h-4 flex-shrink-0"
+                style={{ color: "oklch(0.82 0.19 152)" }}
+              />
+              <span
+                className="font-semibold text-sm"
+                style={{ color: "oklch(0.82 0.19 152)" }}
+              >
+                {msg.content}
+              </span>
+            </div>
+            <PaymentBadge status={msg.paymentStatus} />
+          </div>
+        ) : (
+          <div
+            className="rounded-2xl px-4 py-2.5 text-sm"
+            style={{
+              background: isMine
+                ? "oklch(0.82 0.19 152 / 0.15)"
+                : "oklch(0.22 0.016 240)",
+              color: isMine ? "oklch(0.90 0.15 152)" : "oklch(0.90 0.01 220)",
+              borderRadius: isMine
+                ? "18px 18px 4px 18px"
+                : "18px 18px 18px 4px",
+            }}
+          >
+            {msg.content}
+          </div>
+        )}
+
+        {/* Reactions */}
+        {msg.reactions.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {Object.entries(
+              msg.reactions.reduce(
+                (acc, r) => {
+                  acc[r.emoji] = (acc[r.emoji] ?? 0) + 1;
+                  return acc;
+                },
+                {} as Record<string, number>,
+              ),
+            ).map(([emoji, count]) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => onReact?.(msg.id, emoji)}
+                className="flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs transition-opacity hover:opacity-80"
+                style={{
+                  background: "oklch(0.22 0.016 240)",
+                  border: "1px solid oklch(0.28 0.018 240)",
+                }}
+              >
+                {emoji} <span className="text-muted-foreground">{count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Timestamp + delivery indicator + react button */}
+        <div
+          className={`flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1 ${
+            isMine ? "justify-end" : "justify-start"
+          }`}
+        >
+          {/* Quick react */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowReactions((s) => !s)}
+              className="opacity-0 group-hover:opacity-60 hover:!opacity-100 text-[12px] transition-opacity"
+              aria-label="Add reaction"
+            >
+              😊
+            </button>
+            {showReactions && (
+              <div
+                className="absolute bottom-full mb-1 flex gap-1 rounded-xl px-2 py-1.5 z-10"
+                style={{
+                  background: "oklch(0.20 0.016 240)",
+                  border: "1px solid oklch(0.28 0.018 240)",
+                  [isMine ? "right" : "left"]: 0,
+                }}
+              >
+                {EMOJI_OPTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      onReact?.(msg.id, emoji);
+                      setShowReactions(false);
+                    }}
+                    className="text-sm hover:scale-125 transition-transform"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {formatTime(msg.timestamp)}
+          {isMine &&
+            (isRead ? (
+              <CheckCheck
+                className="w-3 h-3"
+                style={{ color: "oklch(0.82 0.19 152)" }}
+              />
+            ) : (
+              <Check className="w-3 h-3 opacity-50" />
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Main app view
 export function AppView({
   myAddress,
@@ -608,10 +829,35 @@ export function AppView({
   const { actor } = useActor();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const sendMessageMutation = useSendMessage(myAddress);
-  const {
-    data: messages = [] as BackendMessage[],
-    isPending: messagesLoading,
-  } = useGetMessages(myAddress, selectedContact?.address ?? "");
+  const addReactionMutation = useAddReaction(myAddress);
+  const { data: messages = [] as MessagePublic[], isPending: messagesLoading } =
+    useGetMessages(myAddress, selectedContact?.address ?? "");
+
+  // Typing status
+  const { data: typingUsers = [] } = useTypingStatus(
+    myAddress,
+    selectedContact?.address ?? "",
+  );
+  const setTypingMutation = useSetTypingStatus(myAddress);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Presence
+  const { data: contacts = [], isLoading: contactsLoading } =
+    useGetContacts(myAddress);
+  const { data: presenceRecords = [] } = usePresence(
+    myAddress,
+    contacts.map((c) => c.address),
+  );
+  const setPresenceMutation = useSetPresence(myAddress);
+
+  // Mark messages read when chat is open
+  const markReadMutation = useMarkMessagesRead(myAddress);
+
+  const addContact = useAddContact(myAddress);
+  const removeContact = useRemoveContact(myAddress);
+  const { data: balance, isLoading: balanceLoading } =
+    useHoosatBalance(myAddress);
+
   const [input, setInput] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [newContactAddr, setNewContactAddr] = useState("");
@@ -619,37 +865,83 @@ export function AppView({
   const [sendOpen, setSendOpen] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("contacts");
 
-  const { data: contacts = [], isLoading: contactsLoading } =
-    useGetContacts(myAddress);
-  const addContact = useAddContact(myAddress);
-  const removeContact = useRemoveContact(myAddress);
-  const { data: balance, isLoading: balanceLoading } =
-    useHoosatBalance(myAddress);
-
-  // Use real contacts only — no fake demo data
-  const displayContacts = contacts;
-
   // Auto-scroll to bottom when messages change
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesCount = messages.length;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll anchor re-run on message count
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll anchor
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messagesCount]);
 
+  // Set presence on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once
+  useEffect(() => {
+    if (myAddress && actor) {
+      setPresenceMutation.mutate(true);
+    }
+    return () => {
+      if (myAddress && actor) {
+        setPresenceMutation.mutate(false);
+      }
+    };
+  }, [myAddress, actor]);
+
+  // Mark messages read when contact selected & messages arrive
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mark read on selection
+  useEffect(() => {
+    if (selectedContact && messages.length > 0) {
+      const latest = messages[messages.length - 1];
+      markReadMutation.mutate({
+        contactAddress: selectedContact.address,
+        upToTimestamp: latest.timestamp,
+      });
+    }
+  }, [selectedContact?.address, messagesCount]);
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || !selectedContact) return;
-    // Clear input immediately for instant feedback
     setInput("");
+    // Stop typing indicator
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    setTypingMutation.mutate({
+      contactAddress: selectedContact.address,
+      isTyping: false,
+    });
     try {
       await sendMessageMutation.mutateAsync({
         content: text,
         contactAddress: selectedContact.address,
       });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to send message");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to send message");
     }
+  };
+
+  const handleInputChange = (val: string) => {
+    setInput(val);
+    if (!selectedContact) return;
+    // Debounce typing indicator
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    setTypingMutation.mutate({
+      contactAddress: selectedContact.address,
+      isTyping: true,
+    });
+    typingTimerRef.current = setTimeout(() => {
+      setTypingMutation.mutate({
+        contactAddress: selectedContact.address,
+        isTyping: false,
+      });
+    }, 2000);
+  };
+
+  const handleReact = (messageId: string, emoji: string) => {
+    if (!selectedContact) return;
+    addReactionMutation.mutate({
+      contactAddress: selectedContact.address,
+      messageId,
+      emoji,
+    });
   };
 
   const handleAddContact = async () => {
@@ -664,9 +956,8 @@ export function AppView({
       setAddOpen(false);
       setNewContactAddr("");
       setNewContactName("");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to add contact");
-      // keep dialog open so user can retry
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to add contact");
     }
   };
 
@@ -680,17 +971,17 @@ export function AppView({
     }
   };
 
-  const formatTime = (ts: number) => {
-    return new Date(ts).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const selectContact = (contact: Contact) => {
     setSelectedContact(contact);
     setMobileView("chat");
   };
+
+  const isContactOnline = (addr: string) =>
+    presenceRecords.some((r) => r.userId === addr && r.isOnline);
+
+  const isContactTyping =
+    selectedContact &&
+    typingUsers.some((u) => u !== myAddress && u === selectedContact.address);
 
   return (
     <div
@@ -765,7 +1056,7 @@ export function AppView({
 
       {/* Main 3-column (responsive) */}
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Left: Contacts — full width on mobile when mobileView=contacts, sidebar on desktop */}
+        {/* Left: Contacts */}
         <div
           className={`${
             mobileView === "contacts" ? "flex" : "hidden"
@@ -850,7 +1141,7 @@ export function AppView({
               </div>
             ) : (
               <div>
-                {displayContacts.length === 0 ? (
+                {contacts.length === 0 ? (
                   <div
                     className="text-center py-8 px-4 text-sm text-muted-foreground"
                     data-ocid="contacts.empty_state"
@@ -858,7 +1149,7 @@ export function AppView({
                     No contacts yet. Add someone to start chatting.
                   </div>
                 ) : (
-                  displayContacts.map((contact, i) => (
+                  contacts.map((contact, i) => (
                     <button
                       key={contact.address}
                       type="button"
@@ -870,20 +1161,32 @@ export function AppView({
                       onClick={() => selectContact(contact)}
                       data-ocid={`contacts.item.${i + 1}`}
                     >
-                      <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                        style={{
-                          background:
-                            selectedContact?.address === contact.address
-                              ? "oklch(0.82 0.19 152 / 0.2)"
-                              : "oklch(0.22 0.016 240)",
-                          color:
-                            selectedContact?.address === contact.address
-                              ? "oklch(0.82 0.19 152)"
-                              : "oklch(0.70 0.02 220)",
-                        }}
-                      >
-                        {contact.displayName[0]}
+                      <div className="relative flex-shrink-0">
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
+                          style={{
+                            background:
+                              selectedContact?.address === contact.address
+                                ? "oklch(0.82 0.19 152 / 0.2)"
+                                : "oklch(0.22 0.016 240)",
+                            color:
+                              selectedContact?.address === contact.address
+                                ? "oklch(0.82 0.19 152)"
+                                : "oklch(0.70 0.02 220)",
+                          }}
+                        >
+                          {contact.displayName[0]}
+                        </div>
+                        {/* Online dot */}
+                        {isContactOnline(contact.address) && (
+                          <div
+                            className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
+                            style={{
+                              background: "oklch(0.82 0.19 152)",
+                              borderColor: "oklch(0.13 0.011 240)",
+                            }}
+                          />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div
@@ -918,7 +1221,7 @@ export function AppView({
           </ScrollArea>
         </div>
 
-        {/* Middle: Chat — full width on mobile when mobileView=chat */}
+        {/* Middle: Chat */}
         <div
           className={`${
             mobileView === "chat" ? "flex" : "hidden"
@@ -929,7 +1232,6 @@ export function AppView({
               {/* Chat header */}
               <div className="flex items-center justify-between px-3 sm:px-5 py-3.5 border-b border-surface-3 flex-shrink-0">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  {/* Back to contacts on mobile */}
                   <button
                     type="button"
                     className="md:hidden text-muted-foreground hover:text-foreground transition-colors p-1 flex-shrink-0"
@@ -938,21 +1240,34 @@ export function AppView({
                   >
                     <ArrowLeft className="w-5 h-5" />
                   </button>
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                    style={{
-                      background: "oklch(0.82 0.19 152 / 0.2)",
-                      color: "oklch(0.82 0.19 152)",
-                    }}
-                  >
-                    {selectedContact.displayName[0]}
+                  <div className="relative flex-shrink-0">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                      style={{
+                        background: "oklch(0.82 0.19 152 / 0.2)",
+                        color: "oklch(0.82 0.19 152)",
+                      }}
+                    >
+                      {selectedContact.displayName[0]}
+                    </div>
+                    {isContactOnline(selectedContact.address) && (
+                      <div
+                        className="absolute bottom-0 right-0 w-2 h-2 rounded-full border-2"
+                        style={{
+                          background: "oklch(0.82 0.19 152)",
+                          borderColor: "oklch(0.11 0.012 240)",
+                        }}
+                      />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold text-sm truncate">
                       {selectedContact.displayName}
                     </div>
                     <div className="text-[11px] text-muted-foreground font-mono truncate">
-                      {selectedContact.address.slice(0, 22)}...
+                      {isContactOnline(selectedContact.address)
+                        ? "Online"
+                        : `${selectedContact.address.slice(0, 22)}...`}
                     </div>
                   </div>
                 </div>
@@ -1017,49 +1332,55 @@ export function AppView({
                           key={`${msg.sender}-${String(msg.timestamp)}-${i}`}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          className={`flex ${
-                            msg.sender === myAddress
-                              ? "justify-end"
-                              : "justify-start"
-                          }`}
+                          transition={{ delay: Math.min(i * 0.03, 0.3) }}
                           data-ocid={`chat.item.${i + 1}`}
                         >
-                          <div className="max-w-[85%] sm:max-w-[72%]">
-                            <div
-                              className="rounded-2xl px-4 py-2.5 text-sm"
-                              style={{
-                                background:
-                                  msg.sender === myAddress
-                                    ? "oklch(0.82 0.19 152 / 0.15)"
-                                    : "oklch(0.22 0.016 240)",
-                                color:
-                                  msg.sender === myAddress
-                                    ? "oklch(0.90 0.15 152)"
-                                    : "oklch(0.90 0.01 220)",
-                                borderRadius:
-                                  msg.sender === myAddress
-                                    ? "18px 18px 4px 18px"
-                                    : "18px 18px 18px 4px",
-                              }}
-                            >
-                              {msg.content}
-                            </div>
-                            <div
-                              className={`flex items-center gap-1 text-[10px] text-muted-foreground mt-1 ${
-                                msg.sender === myAddress
-                                  ? "justify-end"
-                                  : "justify-start"
-                              }`}
-                            >
-                              {formatTime(Number(msg.timestamp))}
-                              {msg.sender === myAddress && (
-                                <Check className="w-3 h-3 opacity-60" />
-                              )}
-                            </div>
-                          </div>
+                          <MessageBubble
+                            msg={msg}
+                            myAddress={myAddress}
+                            onReact={handleReact}
+                          />
                         </motion.div>
                       ))}
+                      {/* Typing indicator */}
+                      {isContactTyping && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-center gap-2 px-1"
+                        >
+                          <div
+                            className="flex items-center gap-1 rounded-full px-3 py-2"
+                            style={{ background: "oklch(0.22 0.016 240)" }}
+                          >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full animate-bounce"
+                              style={{
+                                background: "oklch(0.55 0.02 240)",
+                                animationDelay: "0ms",
+                              }}
+                            />
+                            <span
+                              className="w-1.5 h-1.5 rounded-full animate-bounce"
+                              style={{
+                                background: "oklch(0.55 0.02 240)",
+                                animationDelay: "150ms",
+                              }}
+                            />
+                            <span
+                              className="w-1.5 h-1.5 rounded-full animate-bounce"
+                              style={{
+                                background: "oklch(0.55 0.02 240)",
+                                animationDelay: "300ms",
+                              }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-muted-foreground">
+                            {selectedContact.displayName} is typing…
+                          </span>
+                        </motion.div>
+                      )}
                       {/* Auto-scroll anchor */}
                       <div ref={messagesEndRef} />
                     </div>
@@ -1073,6 +1394,8 @@ export function AppView({
                   type="button"
                   className="text-muted-foreground hover:text-mint transition-colors p-1.5 touch-manipulation"
                   data-ocid="chat.attach.button"
+                  title="Attach file (coming soon)"
+                  aria-label="Attach file"
                 >
                   <Paperclip className="w-5 h-5" />
                 </button>
@@ -1080,12 +1403,14 @@ export function AppView({
                   type="button"
                   className="text-muted-foreground hover:text-mint transition-colors p-1.5 touch-manipulation"
                   data-ocid="chat.voice.button"
+                  title="Voice message (coming soon)"
+                  aria-label="Record voice message"
                 >
                   <Mic className="w-5 h-5" />
                 </button>
                 <Input
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => handleInputChange(e.target.value)}
                   placeholder="Type a message..."
                   className="flex-1 bg-surface-2 border-surface-3 rounded-full h-11 text-sm"
                   style={{ fontSize: "16px" }}
@@ -1145,7 +1470,7 @@ export function AppView({
           )}
         </div>
 
-        {/* Right: Wallet — full width on mobile when mobileView=wallet, sidebar on desktop */}
+        {/* Right: Wallet */}
         <div
           className={`${
             mobileView === "wallet" ? "flex" : "hidden"

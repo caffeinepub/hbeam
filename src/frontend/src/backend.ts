@@ -89,39 +89,93 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface MessagePublic {
+    id: string;
+    paymentStatus?: PaymentStatus;
+    content: string;
+    txId?: string;
+    recipient: HoosatAddress;
+    sender: HoosatAddress;
+    messageType: MessageTypePublic;
+    fileMetadata?: FileMetadata;
+    timestamp: bigint;
+    reactions: Array<Reaction>;
+    readBy: Array<HoosatAddress>;
+}
+export interface PresenceRecord {
+    userId: HoosatAddress;
+    isOnline: boolean;
+    lastSeen: bigint;
+}
 export type HoosatAddress = string;
-export interface WalletAddress {
-    principal: Principal;
-    hoosatAddress: HoosatAddress;
-}
-export interface Contact {
-    displayName: string;
-    address: HoosatAddress;
-}
-export type MessageType = { text: null } | { file: null } | { voice: null };
 export interface FileMetadata {
     fileName: string;
     fileSize: bigint;
     fileType: string;
 }
-export interface Message {
-    sender: HoosatAddress;
+export interface Contact {
+    displayName: string;
+    address: HoosatAddress;
+}
+export interface PaymentRecord {
+    status: PaymentStatus;
+    messageId: string;
+    createdAt: bigint;
+    txId: string;
     recipient: HoosatAddress;
-    content: string;
+    sender: HoosatAddress;
+    updatedAt: bigint;
+    amount: string;
+}
+export interface WalletAddress {
+    principal: Principal;
+    hoosatAddress: HoosatAddress;
+}
+export interface Reaction {
+    userId: HoosatAddress;
+    emoji: string;
     timestamp: bigint;
-    messageType: MessageType;
-    fileMetadata: [] | [FileMetadata];
+}
+export enum MessageType {
+    voice = "voice",
+    file = "file",
+    text = "text"
+}
+export enum MessageTypePublic {
+    voice = "voice",
+    file = "file",
+    text = "text",
+    payment = "payment"
+}
+export enum PaymentStatus {
+    broadcasted = "broadcasted",
+    pending = "pending",
+    confirmed = "confirmed",
+    failed = "failed"
 }
 export interface backendInterface {
     addContact(userAddress: HoosatAddress, contactAddress: HoosatAddress, displayName: string): Promise<void>;
+    addReaction(userId: HoosatAddress, convId: string, messageId: string, emoji: string, timestamp: bigint): Promise<void>;
+    createPaymentMessage(sender: HoosatAddress, recipient: HoosatAddress, amountHtn: string, timestamp: bigint): Promise<string>;
     getAllWalletAddresses(): Promise<Array<WalletAddress>>;
     getContacts(userAddress: HoosatAddress): Promise<Array<Contact>>;
+    getMessages(user1: HoosatAddress, user2: HoosatAddress, limit: bigint | null, since: bigint | null): Promise<Array<MessagePublic>>;
+    getPaymentHistory(userAddress: HoosatAddress): Promise<Array<PaymentRecord>>;
+    getPaymentStatus(messageId: string): Promise<[PaymentStatus, string] | null>;
+    getPresence(userIds: Array<HoosatAddress>): Promise<Array<PresenceRecord>>;
+    getTypingStatus(convId: string): Promise<Array<HoosatAddress>>;
+    getUnreadCount(userId: HoosatAddress, contactAddress: HoosatAddress): Promise<bigint>;
     getWalletAddress(user: Principal): Promise<HoosatAddress>;
+    markMessagesRead(userId: HoosatAddress, convId: string, upToTimestamp: bigint): Promise<void>;
     registerWalletAddress(hoosatAddress: HoosatAddress): Promise<void>;
     removeContact(userAddress: HoosatAddress, contactAddress: HoosatAddress): Promise<void>;
-    getMessages(user1: HoosatAddress, user2: HoosatAddress): Promise<Array<Message>>;
-    sendMessage(sender: HoosatAddress, recipient: HoosatAddress, content: string, timestamp: bigint): Promise<void>;
+    removeReaction(userId: HoosatAddress, convId: string, messageId: string, emoji: string): Promise<void>;
+    sendMessage(sender: HoosatAddress, recipient: HoosatAddress, content: string, timestamp: bigint, messageType: MessageType, fileMetadata: FileMetadata | null): Promise<string>;
+    setPresence(userId: HoosatAddress, isOnline: boolean, timestamp: bigint): Promise<void>;
+    setTypingStatus(userId: HoosatAddress, convId: string, isTyping: boolean, timestamp: bigint): Promise<void>;
+    updatePaymentStatus(messageId: string, txId: string, newStatus: PaymentStatus, timestamp: bigint): Promise<void>;
 }
+import type { FileMetadata as _FileMetadata, HoosatAddress as _HoosatAddress, MessagePublic as _MessagePublic, MessageType as _MessageType, MessageTypePublic as _MessageTypePublic, PaymentRecord as _PaymentRecord, PaymentStatus as _PaymentStatus, Reaction as _Reaction } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async addContact(arg0: HoosatAddress, arg1: HoosatAddress, arg2: string): Promise<void> {
@@ -135,6 +189,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.addContact(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async addReaction(arg0: HoosatAddress, arg1: string, arg2: string, arg3: string, arg4: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addReaction(arg0, arg1, arg2, arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addReaction(arg0, arg1, arg2, arg3, arg4);
+            return result;
+        }
+    }
+    async createPaymentMessage(arg0: HoosatAddress, arg1: HoosatAddress, arg2: string, arg3: bigint): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createPaymentMessage(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createPaymentMessage(arg0, arg1, arg2, arg3);
             return result;
         }
     }
@@ -166,6 +248,90 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getMessages(arg0: HoosatAddress, arg1: HoosatAddress, arg2: bigint | null, arg3: bigint | null): Promise<Array<MessagePublic>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMessages(arg0, arg1, to_candid_opt_n1(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n1(this._uploadFile, this._downloadFile, arg3));
+                return from_candid_vec_n2(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMessages(arg0, arg1, to_candid_opt_n1(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n1(this._uploadFile, this._downloadFile, arg3));
+            return from_candid_vec_n2(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPaymentHistory(arg0: HoosatAddress): Promise<Array<PaymentRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPaymentHistory(arg0);
+                return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPaymentHistory(arg0);
+            return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPaymentStatus(arg0: string): Promise<[PaymentStatus, string] | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPaymentStatus(arg0);
+                return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPaymentStatus(arg0);
+            return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPresence(arg0: Array<HoosatAddress>): Promise<Array<PresenceRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPresence(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPresence(arg0);
+            return result;
+        }
+    }
+    async getTypingStatus(arg0: string): Promise<Array<HoosatAddress>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTypingStatus(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTypingStatus(arg0);
+            return result;
+        }
+    }
+    async getUnreadCount(arg0: HoosatAddress, arg1: HoosatAddress): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUnreadCount(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUnreadCount(arg0, arg1);
+            return result;
+        }
+    }
     async getWalletAddress(arg0: Principal): Promise<HoosatAddress> {
         if (this.processError) {
             try {
@@ -177,6 +343,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getWalletAddress(arg0);
+            return result;
+        }
+    }
+    async markMessagesRead(arg0: HoosatAddress, arg1: string, arg2: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.markMessagesRead(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.markMessagesRead(arg0, arg1, arg2);
             return result;
         }
     }
@@ -208,14 +388,249 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getMessages(arg0: HoosatAddress, arg1: HoosatAddress): Promise<Array<Message>> {
-        const result = await this.actor.getMessages(arg0, arg1);
-        return result;
+    async removeReaction(arg0: HoosatAddress, arg1: string, arg2: string, arg3: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.removeReaction(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.removeReaction(arg0, arg1, arg2, arg3);
+            return result;
+        }
     }
-    async sendMessage(arg0: HoosatAddress, arg1: HoosatAddress, arg2: string, arg3: bigint): Promise<void> {
-        const result = await this.actor.sendMessage(arg0, arg1, arg2, arg3);
-        return result;
+    async sendMessage(arg0: HoosatAddress, arg1: HoosatAddress, arg2: string, arg3: bigint, arg4: MessageType, arg5: FileMetadata | null): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.sendMessage(arg0, arg1, arg2, arg3, to_candid_MessageType_n17(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n19(this._uploadFile, this._downloadFile, arg5));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.sendMessage(arg0, arg1, arg2, arg3, to_candid_MessageType_n17(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n19(this._uploadFile, this._downloadFile, arg5));
+            return result;
+        }
     }
+    async setPresence(arg0: HoosatAddress, arg1: boolean, arg2: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setPresence(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setPresence(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async setTypingStatus(arg0: HoosatAddress, arg1: string, arg2: boolean, arg3: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setTypingStatus(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setTypingStatus(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async updatePaymentStatus(arg0: string, arg1: string, arg2: PaymentStatus, arg3: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updatePaymentStatus(arg0, arg1, to_candid_PaymentStatus_n20(this._uploadFile, this._downloadFile, arg2), arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updatePaymentStatus(arg0, arg1, to_candid_PaymentStatus_n20(this._uploadFile, this._downloadFile, arg2), arg3);
+            return result;
+        }
+    }
+}
+function from_candid_MessagePublic_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _MessagePublic): MessagePublic {
+    return from_candid_record_n4(_uploadFile, _downloadFile, value);
+}
+function from_candid_MessageTypePublic_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _MessageTypePublic): MessageTypePublic {
+    return from_candid_variant_n10(_uploadFile, _downloadFile, value);
+}
+function from_candid_PaymentRecord_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PaymentRecord): PaymentRecord {
+    return from_candid_record_n14(_uploadFile, _downloadFile, value);
+}
+function from_candid_PaymentStatus_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PaymentStatus): PaymentStatus {
+    return from_candid_variant_n7(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_FileMetadata]): FileMetadata | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [[_PaymentStatus, string]]): [PaymentStatus, string] | null {
+    return value.length === 0 ? null : from_candid_tuple_n16(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_PaymentStatus]): PaymentStatus | null {
+    return value.length === 0 ? null : from_candid_PaymentStatus_n6(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    status: _PaymentStatus;
+    messageId: string;
+    createdAt: bigint;
+    txId: string;
+    recipient: _HoosatAddress;
+    sender: _HoosatAddress;
+    updatedAt: bigint;
+    amount: string;
+}): {
+    status: PaymentStatus;
+    messageId: string;
+    createdAt: bigint;
+    txId: string;
+    recipient: HoosatAddress;
+    sender: HoosatAddress;
+    updatedAt: bigint;
+    amount: string;
+} {
+    return {
+        status: from_candid_PaymentStatus_n6(_uploadFile, _downloadFile, value.status),
+        messageId: value.messageId,
+        createdAt: value.createdAt,
+        txId: value.txId,
+        recipient: value.recipient,
+        sender: value.sender,
+        updatedAt: value.updatedAt,
+        amount: value.amount
+    };
+}
+function from_candid_record_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: string;
+    paymentStatus: [] | [_PaymentStatus];
+    content: string;
+    txId: [] | [string];
+    recipient: _HoosatAddress;
+    sender: _HoosatAddress;
+    messageType: _MessageTypePublic;
+    fileMetadata: [] | [_FileMetadata];
+    timestamp: bigint;
+    reactions: Array<_Reaction>;
+    readBy: Array<_HoosatAddress>;
+}): {
+    id: string;
+    paymentStatus?: PaymentStatus;
+    content: string;
+    txId?: string;
+    recipient: HoosatAddress;
+    sender: HoosatAddress;
+    messageType: MessageTypePublic;
+    fileMetadata?: FileMetadata;
+    timestamp: bigint;
+    reactions: Array<Reaction>;
+    readBy: Array<HoosatAddress>;
+} {
+    return {
+        id: value.id,
+        paymentStatus: record_opt_to_undefined(from_candid_opt_n5(_uploadFile, _downloadFile, value.paymentStatus)),
+        content: value.content,
+        txId: record_opt_to_undefined(from_candid_opt_n8(_uploadFile, _downloadFile, value.txId)),
+        recipient: value.recipient,
+        sender: value.sender,
+        messageType: from_candid_MessageTypePublic_n9(_uploadFile, _downloadFile, value.messageType),
+        fileMetadata: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.fileMetadata)),
+        timestamp: value.timestamp,
+        reactions: value.reactions,
+        readBy: value.readBy
+    };
+}
+function from_candid_tuple_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [_PaymentStatus, string]): [PaymentStatus, string] {
+    return [
+        from_candid_PaymentStatus_n6(_uploadFile, _downloadFile, value[0]),
+        value[1]
+    ];
+}
+function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    voice: null;
+} | {
+    file: null;
+} | {
+    text: null;
+} | {
+    payment: null;
+}): MessageTypePublic {
+    return "voice" in value ? MessageTypePublic.voice : "file" in value ? MessageTypePublic.file : "text" in value ? MessageTypePublic.text : "payment" in value ? MessageTypePublic.payment : value;
+}
+function from_candid_variant_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    broadcasted: null;
+} | {
+    pending: null;
+} | {
+    confirmed: null;
+} | {
+    failed: null;
+}): PaymentStatus {
+    return "broadcasted" in value ? PaymentStatus.broadcasted : "pending" in value ? PaymentStatus.pending : "confirmed" in value ? PaymentStatus.confirmed : "failed" in value ? PaymentStatus.failed : value;
+}
+function from_candid_vec_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_PaymentRecord>): Array<PaymentRecord> {
+    return value.map((x)=>from_candid_PaymentRecord_n13(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_MessagePublic>): Array<MessagePublic> {
+    return value.map((x)=>from_candid_MessagePublic_n3(_uploadFile, _downloadFile, x));
+}
+function to_candid_MessageType_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MessageType): _MessageType {
+    return to_candid_variant_n18(_uploadFile, _downloadFile, value);
+}
+function to_candid_PaymentStatus_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: PaymentStatus): _PaymentStatus {
+    return to_candid_variant_n21(_uploadFile, _downloadFile, value);
+}
+function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: bigint | null): [] | [bigint] {
+    return value === null ? candid_none() : candid_some(value);
+}
+function to_candid_opt_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: FileMetadata | null): [] | [_FileMetadata] {
+    return value === null ? candid_none() : candid_some(value);
+}
+function to_candid_variant_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MessageType): {
+    voice: null;
+} | {
+    file: null;
+} | {
+    text: null;
+} {
+    return value == MessageType.voice ? {
+        voice: null
+    } : value == MessageType.file ? {
+        file: null
+    } : value == MessageType.text ? {
+        text: null
+    } : value;
+}
+function to_candid_variant_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: PaymentStatus): {
+    broadcasted: null;
+} | {
+    pending: null;
+} | {
+    confirmed: null;
+} | {
+    failed: null;
+} {
+    return value == PaymentStatus.broadcasted ? {
+        broadcasted: null
+    } : value == PaymentStatus.pending ? {
+        pending: null
+    } : value == PaymentStatus.confirmed ? {
+        confirmed: null
+    } : value == PaymentStatus.failed ? {
+        failed: null
+    } : value;
 }
 export interface CreateActorOptions {
     agent?: Agent;

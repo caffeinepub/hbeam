@@ -1,0 +1,107 @@
+// Version: 1.0.0
+type Contact__891480783 =
+  {address : HoosatAddress__380154498; displayName : Text};
+type ConversationId__59272760 = Text;
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type FileMetadata__287815137 =
+  {fileName : Text; fileSize : Nat; fileType : Text};
+type HoosatAddress__380154498 = Text;
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type List__415060402<T> = List__790383201<T>;
+type List__790383201<T> =
+  {
+    var blockIndex : Nat__490723111;
+    var blocks : [var [var ?T]];
+    var elementIndex : Nat__490723111
+  };
+type MessageType__269899696 = {#file; #text; #voice};
+type Message__19119041 =
+  {
+    content : Text;
+    fileMetadata : ?FileMetadata__287815137;
+    messageType : MessageType__269899696;
+    recipient : HoosatAddress__380154498;
+    sender : HoosatAddress__380154498;
+    timestamp : Nat
+  };
+type MsgMeta__648603817 =
+  {
+    paymentStatus : ?PaymentStatus__876794400;
+    reactions : List__415060402<Reaction__699695330>;
+    readBy : List__415060402<HoosatAddress__380154498>;
+    txId : ?Text
+  };
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type PaymentRecord__216844392 =
+  {
+    amount : Text;
+    createdAt : Nat;
+    messageId : Text;
+    recipient : HoosatAddress__380154498;
+    sender : HoosatAddress__380154498;
+    status : PaymentStatus__876794400;
+    txId : Text;
+    updatedAt : Nat
+  };
+type PaymentStatus__876794400 = {#broadcasted; #confirmed; #failed; #pending};
+type PresenceRecord__751366665 =
+  {isOnline : Bool; lastSeen : Nat; userId : HoosatAddress__380154498};
+type Reaction__699695330 =
+  {emoji : Text; timestamp : Nat; userId : HoosatAddress__380154498};
+type TypingRecord__958139159 =
+  {conversationId : Text; timestamp : Nat; userId : HoosatAddress__380154498};
+actor {
+  stable contacts :
+    {
+      var root :
+        Node__46230540<HoosatAddress__380154498,
+                        List__415060402<Contact__891480783>>;
+      var size : Nat__490723111
+    };
+  stable conversations :
+    {
+      var root :
+        Node__46230540<ConversationId__59272760,
+                        List__415060402<Message__19119041>>;
+      var size : Nat__490723111
+    };
+  stable msgIdMap :
+    {
+      var root : Node__46230540<Text, (ConversationId__59272760, Nat)>;
+      var size : Nat__490723111
+    };
+  stable msgMeta :
+    {
+      var root : Node__46230540<Text, MsgMeta__648603817>;
+      var size : Nat__490723111
+    };
+  stable var nextMsgId : Nat;
+  stable payments :
+    {
+      var root : Node__46230540<Text, PaymentRecord__216844392>;
+      var size : Nat__490723111
+    };
+  stable presence :
+    {
+      var root :
+        Node__46230540<HoosatAddress__380154498, PresenceRecord__751366665>;
+      var size : Nat__490723111
+    };
+  stable typingStatus :
+    {
+      var root :
+        Node__46230540<Text, List__415060402<TypingRecord__958139159>>;
+      var size : Nat__490723111
+    };
+  stable walletAddresses :
+    {
+      var root : Node__46230540<Principal, HoosatAddress__380154498>;
+      var size : Nat__490723111
+    }
+};

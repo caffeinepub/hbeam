@@ -1,0 +1,113 @@
+type WalletAddress = 
+ record {
+   hoosatAddress: HoosatAddress;
+   "principal": principal;
+ };
+type Reaction = 
+ record {
+   emoji: text;
+   timestamp: nat;
+   userId: HoosatAddress;
+ };
+type PresenceRecord = 
+ record {
+   isOnline: bool;
+   lastSeen: nat;
+   userId: HoosatAddress;
+ };
+type PaymentStatus = 
+ variant {
+   broadcasted;
+   confirmed;
+   failed;
+   pending;
+ };
+type PaymentRecord = 
+ record {
+   amount: text;
+   createdAt: nat;
+   messageId: text;
+   recipient: HoosatAddress;
+   sender: HoosatAddress;
+   status: PaymentStatus;
+   txId: text;
+   updatedAt: nat;
+ };
+type MessageTypePublic = 
+ variant {
+   file;
+   payment;
+   "text";
+   voice;
+ };
+type MessageType = 
+ variant {
+   file;
+   "text";
+   voice;
+ };
+type MessagePublic = 
+ record {
+   content: text;
+   fileMetadata: opt FileMetadata;
+   id: text;
+   messageType: MessageTypePublic;
+   paymentStatus: opt PaymentStatus;
+   reactions: vec Reaction;
+   readBy: vec HoosatAddress;
+   recipient: HoosatAddress;
+   sender: HoosatAddress;
+   timestamp: nat;
+   txId: opt text;
+ };
+type HoosatAddress = text;
+type FileMetadata = 
+ record {
+   fileName: text;
+   fileSize: nat;
+   fileType: text;
+ };
+type Contact = 
+ record {
+   address: HoosatAddress;
+   displayName: text;
+ };
+service : {
+  addContact: (userAddress: HoosatAddress, contactAddress: HoosatAddress,
+   displayName: text) -> ();
+  addReaction: (userId: HoosatAddress, convId: text, messageId: text, emoji:
+   text, timestamp: nat) -> ();
+  createPaymentMessage: (sender: HoosatAddress, recipient: HoosatAddress,
+   amountHtn: text, timestamp: nat) -> (text);
+  getAllWalletAddresses: () -> (vec WalletAddress) query;
+  getContacts: (userAddress: HoosatAddress) -> (vec Contact) query;
+  getMessages: (user1: HoosatAddress, user2: HoosatAddress, limit: opt nat,
+   since: opt nat) -> (vec MessagePublic) query;
+  getPaymentHistory: (userAddress: HoosatAddress) ->
+   (vec PaymentRecord) query;
+  getPaymentStatus: (messageId: text) ->
+   (opt record {
+          PaymentStatus;
+          text;
+        }) query;
+  getPresence: (userIds: vec HoosatAddress) -> (vec PresenceRecord) query;
+  getTypingStatus: (convId: text) -> (vec HoosatAddress) query;
+  getUnreadCount: (userId: HoosatAddress, contactAddress: HoosatAddress) ->
+   (nat) query;
+  getWalletAddress: (user: principal) -> (HoosatAddress) query;
+  markMessagesRead: (userId: HoosatAddress, convId: text, upToTimestamp:
+   nat) -> ();
+  registerWalletAddress: (hoosatAddress: HoosatAddress) -> ();
+  removeContact: (userAddress: HoosatAddress, contactAddress:
+   HoosatAddress) -> ();
+  removeReaction: (userId: HoosatAddress, convId: text, messageId: text,
+   emoji: text) -> ();
+  sendMessage: (sender: HoosatAddress, recipient: HoosatAddress, content:
+   text, timestamp: nat, messageType: MessageType, fileMetadata:
+   opt FileMetadata) -> (text);
+  setPresence: (userId: HoosatAddress, isOnline: bool, timestamp: nat) -> ();
+  setTypingStatus: (userId: HoosatAddress, convId: text, isTyping: bool,
+   timestamp: nat) -> ();
+  updatePaymentStatus: (messageId: text, txId: text, newStatus:
+   PaymentStatus, timestamp: nat) -> ();
+}
