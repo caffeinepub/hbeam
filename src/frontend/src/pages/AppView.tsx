@@ -16,6 +16,7 @@ import {
 } from "hoosat-sdk-web";
 import {
   ArrowLeft,
+  Check,
   Copy,
   Download,
   KeyRound,
@@ -32,7 +33,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Contact } from "../backend.d.ts";
 import { useActor } from "../hooks/useActor";
@@ -609,7 +610,7 @@ export function AppView({
   const sendMessageMutation = useSendMessage(myAddress);
   const {
     data: messages = [] as BackendMessage[],
-    isLoading: messagesLoading,
+    isPending: messagesLoading,
   } = useGetMessages(myAddress, selectedContact?.address ?? "");
   const [input, setInput] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -625,25 +626,27 @@ export function AppView({
   const { data: balance, isLoading: balanceLoading } =
     useHoosatBalance(myAddress);
 
-  const displayContacts: Contact[] =
-    contacts.length > 0
-      ? contacts
-      : [
-          { address: "hoosat:qalice", displayName: "Alice H." },
-          { address: "hoosat:qbobwilson", displayName: "Bob Wilson" },
-          { address: "hoosat:qcarolmint", displayName: "Carol M." },
-        ];
+  // Use real contacts only — no fake demo data
+  const displayContacts = contacts;
 
-  const conversationMessages = messages;
+  // Auto-scroll to bottom when messages change
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesCount = messages.length;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll anchor re-run on message count
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messagesCount]);
 
   const sendMessage = async () => {
-    if (!input.trim() || !selectedContact) return;
+    const text = input.trim();
+    if (!text || !selectedContact) return;
+    // Clear input immediately for instant feedback
+    setInput("");
     try {
       await sendMessageMutation.mutateAsync({
-        content: input.trim(),
+        content: text,
         contactAddress: selectedContact.address,
       });
-      setInput("");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to send message");
     }
@@ -995,7 +998,7 @@ export function AppView({
                     <div className="flex items-center justify-center py-16">
                       <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
-                  ) : conversationMessages.length === 0 ? (
+                  ) : messages.length === 0 ? (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -1009,7 +1012,7 @@ export function AppView({
                     </motion.div>
                   ) : (
                     <div className="space-y-3">
-                      {conversationMessages.map((msg, i) => (
+                      {messages.map((msg, i) => (
                         <motion.div
                           key={`${msg.sender}-${String(msg.timestamp)}-${i}`}
                           initial={{ opacity: 0, y: 10 }}
@@ -1043,17 +1046,22 @@ export function AppView({
                               {msg.content}
                             </div>
                             <div
-                              className={`text-[10px] text-muted-foreground mt-1 ${
+                              className={`flex items-center gap-1 text-[10px] text-muted-foreground mt-1 ${
                                 msg.sender === myAddress
-                                  ? "text-right"
-                                  : "text-left"
+                                  ? "justify-end"
+                                  : "justify-start"
                               }`}
                             >
                               {formatTime(Number(msg.timestamp))}
+                              {msg.sender === myAddress && (
+                                <Check className="w-3 h-3 opacity-60" />
+                              )}
                             </div>
                           </div>
                         </motion.div>
                       ))}
+                      {/* Auto-scroll anchor */}
+                      <div ref={messagesEndRef} />
                     </div>
                   )}
                 </AnimatePresence>

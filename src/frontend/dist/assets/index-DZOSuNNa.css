@@ -2091,10 +2091,6 @@ body{
   text-align: center;
 }
 
-.text-right{
-  text-align: right;
-}
-
 .align-middle{
   vertical-align: middle;
 }
@@ -2284,6 +2280,10 @@ body{
 
 .opacity-50{
   opacity: 0.5;
+}
+
+.opacity-60{
+  opacity: 0.6;
 }
 
 .opacity-70{

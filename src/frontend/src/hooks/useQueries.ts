@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Message } from "../backend.d.ts";
 import { useActor } from "./useActor";
 
 export function useGetContacts(userAddress: string) {
@@ -64,10 +65,18 @@ export function useGetMessages(myAddress: string, contactAddress: string) {
     queryKey: ["messages", myAddress, contactAddress],
     queryFn: async () => {
       if (!actor || !myAddress || !contactAddress) return [];
-      return actor.getMessages(myAddress, contactAddress);
+      const msgs = await actor.getMessages(myAddress, contactAddress);
+      // Sort ascending by timestamp so messages always appear in order
+      return [...msgs].sort((a, b) =>
+        a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0,
+      );
     },
     enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
+    // Poll every 3s for near-realtime sync; staleTime 0 ensures fresh data
     refetchInterval: 3000,
+    staleTime: 0,
+    // Keep previous data so switching contacts doesn't flash empty
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -87,9 +96,37 @@ export function useSendMessage(myAddress: string) {
       if (!myAddress) throw new Error("No wallet address");
       if (!contactAddress) throw new Error("No contact selected");
       const timestamp = BigInt(Date.now());
-      return actor.sendMessage(myAddress, contactAddress, content, timestamp);
+      await actor.sendMessage(myAddress, contactAddress, content, timestamp);
+      return { timestamp, content, contactAddress };
     },
-    onSuccess: (_data, variables) => {
+    // Optimistic update: add the message locally before the backend responds
+    onMutate: async ({ content, contactAddress }) => {
+      const queryKey = ["messages", myAddress, contactAddress];
+      // Cancel any in-flight refetches so they don't overwrite our optimistic update
+      await qc.cancelQueries({ queryKey });
+      const previousMessages = qc.getQueryData<Message[]>(queryKey) ?? [];
+      const optimisticMessage: Message = {
+        sender: myAddress,
+        recipient: contactAddress,
+        content,
+        timestamp: BigInt(Date.now()),
+        messageType: { text: null },
+        fileMetadata: [],
+      };
+      qc.setQueryData<Message[]>(queryKey, (old) => [
+        ...(old ?? []),
+        optimisticMessage,
+      ]);
+      return { previousMessages, queryKey };
+    },
+    // On error, roll back to previous messages
+    onError: (_err, _vars, context) => {
+      if (context) {
+        qc.setQueryData(context.queryKey, context.previousMessages);
+      }
+    },
+    // After success or error, always refetch to sync with server
+    onSettled: (_data, _err, variables) => {
       qc.invalidateQueries({
         queryKey: ["messages", myAddress, variables.contactAddress],
       });

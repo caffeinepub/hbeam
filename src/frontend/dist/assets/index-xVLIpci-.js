@@ -19701,11 +19701,19 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$l = [
+const __iconNode$m = [
   ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
   ["path", { d: "M19 12H5", key: "x3x0zl" }]
 ];
-const ArrowLeft = createLucideIcon("arrow-left", __iconNode$l);
+const ArrowLeft = createLucideIcon("arrow-left", __iconNode$m);
+/**
+ * @license lucide-react v0.511.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$l = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+const Check = createLucideIcon("check", __iconNode$l);
 /**
  * @license lucide-react v0.511.0 - ISC
  *
@@ -46560,10 +46568,17 @@ function useGetMessages(myAddress, contactAddress) {
     queryKey: ["messages", myAddress, contactAddress],
     queryFn: async () => {
       if (!actor || !myAddress || !contactAddress) return [];
-      return actor.getMessages(myAddress, contactAddress);
+      const msgs = await actor.getMessages(myAddress, contactAddress);
+      return [...msgs].sort(
+        (a2, b2) => a2.timestamp < b2.timestamp ? -1 : a2.timestamp > b2.timestamp ? 1 : 0
+      );
     },
     enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
-    refetchInterval: 3e3
+    // Poll every 3s for near-realtime sync; staleTime 0 ensures fresh data
+    refetchInterval: 3e3,
+    staleTime: 0,
+    // Keep previous data so switching contacts doesn't flash empty
+    placeholderData: (prev) => prev
   });
 }
 function useSendMessage(myAddress) {
@@ -46578,9 +46593,36 @@ function useSendMessage(myAddress) {
       if (!myAddress) throw new Error("No wallet address");
       if (!contactAddress) throw new Error("No contact selected");
       const timestamp = BigInt(Date.now());
-      return actor.sendMessage(myAddress, contactAddress, content, timestamp);
+      await actor.sendMessage(myAddress, contactAddress, content, timestamp);
+      return { timestamp, content, contactAddress };
     },
-    onSuccess: (_data, variables) => {
+    // Optimistic update: add the message locally before the backend responds
+    onMutate: async ({ content, contactAddress }) => {
+      const queryKey = ["messages", myAddress, contactAddress];
+      await qc.cancelQueries({ queryKey });
+      const previousMessages = qc.getQueryData(queryKey) ?? [];
+      const optimisticMessage = {
+        sender: myAddress,
+        recipient: contactAddress,
+        content,
+        timestamp: BigInt(Date.now()),
+        messageType: { text: null },
+        fileMetadata: []
+      };
+      qc.setQueryData(queryKey, (old) => [
+        ...old ?? [],
+        optimisticMessage
+      ]);
+      return { previousMessages, queryKey };
+    },
+    // On error, roll back to previous messages
+    onError: (_err, _vars, context) => {
+      if (context) {
+        qc.setQueryData(context.queryKey, context.previousMessages);
+      }
+    },
+    // After success or error, always refetch to sync with server
+    onSettled: (_data, _err, variables) => {
       qc.invalidateQueries({
         queryKey: ["messages", myAddress, variables.contactAddress]
       });
@@ -47298,7 +47340,7 @@ function AppView({
   const sendMessageMutation = useSendMessage(myAddress);
   const {
     data: messages = [],
-    isLoading: messagesLoading
+    isPending: messagesLoading
   } = useGetMessages(myAddress, (selectedContact == null ? void 0 : selectedContact.address) ?? "");
   const [input, setInput] = reactExports.useState("");
   const [addOpen, setAddOpen] = reactExports.useState(false);
@@ -47310,20 +47352,22 @@ function AppView({
   const addContact = useAddContact(myAddress);
   const removeContact = useRemoveContact(myAddress);
   const { data: balance, isLoading: balanceLoading } = useHoosatBalance(myAddress);
-  const displayContacts = contacts.length > 0 ? contacts : [
-    { address: "hoosat:qalice", displayName: "Alice H." },
-    { address: "hoosat:qbobwilson", displayName: "Bob Wilson" },
-    { address: "hoosat:qcarolmint", displayName: "Carol M." }
-  ];
-  const conversationMessages = messages;
+  const displayContacts = contacts;
+  const messagesEndRef = reactExports.useRef(null);
+  const messagesCount = messages.length;
+  reactExports.useEffect(() => {
+    var _a3;
+    (_a3 = messagesEndRef.current) == null ? void 0 : _a3.scrollIntoView({ behavior: "smooth" });
+  }, [messagesCount]);
   const sendMessage = async () => {
-    if (!input.trim() || !selectedContact) return;
+    const text = input.trim();
+    if (!text || !selectedContact) return;
+    setInput("");
     try {
       await sendMessageMutation.mutateAsync({
-        content: input.trim(),
+        content: text,
         contactAddress: selectedContact.address
       });
-      setInput("");
     } catch (e) {
       ue$1.error((e == null ? void 0 : e.message) ?? "Failed to send message");
     }
@@ -47672,7 +47716,7 @@ function AppView({
                     )
                   ] })
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "flex-1 px-3 sm:px-5 py-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { initial: false, children: messagesLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center py-16", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "w-5 h-5 animate-spin text-muted-foreground" }) }) : conversationMessages.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ScrollArea, { className: "flex-1 px-3 sm:px-5 py-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { initial: false, children: messagesLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center py-16", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "w-5 h-5 animate-spin text-muted-foreground" }) }) : messages.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
                   motion.div,
                   {
                     initial: { opacity: 0 },
@@ -47684,38 +47728,44 @@ function AppView({
                       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "No messages yet. Say hello!" })
                     ]
                   }
-                ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: conversationMessages.map((msg, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  motion.div,
-                  {
-                    initial: { opacity: 0, y: 10 },
-                    animate: { opacity: 1, y: 0 },
-                    transition: { delay: i * 0.05 },
-                    className: `flex ${msg.sender === myAddress ? "justify-end" : "justify-start"}`,
-                    "data-ocid": `chat.item.${i + 1}`,
-                    children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-[85%] sm:max-w-[72%]", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "div",
-                        {
-                          className: "rounded-2xl px-4 py-2.5 text-sm",
-                          style: {
-                            background: msg.sender === myAddress ? "oklch(0.82 0.19 152 / 0.15)" : "oklch(0.22 0.016 240)",
-                            color: msg.sender === myAddress ? "oklch(0.90 0.15 152)" : "oklch(0.90 0.01 220)",
-                            borderRadius: msg.sender === myAddress ? "18px 18px 4px 18px" : "18px 18px 18px 4px"
-                          },
-                          children: msg.content
-                        }
-                      ),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "div",
-                        {
-                          className: `text-[10px] text-muted-foreground mt-1 ${msg.sender === myAddress ? "text-right" : "text-left"}`,
-                          children: formatTime(Number(msg.timestamp))
-                        }
-                      )
-                    ] })
-                  },
-                  `${msg.sender}-${String(msg.timestamp)}-${i}`
-                )) }) }) }),
+                ) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+                  messages.map((msg, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    motion.div,
+                    {
+                      initial: { opacity: 0, y: 10 },
+                      animate: { opacity: 1, y: 0 },
+                      transition: { delay: i * 0.05 },
+                      className: `flex ${msg.sender === myAddress ? "justify-end" : "justify-start"}`,
+                      "data-ocid": `chat.item.${i + 1}`,
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-[85%] sm:max-w-[72%]", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            className: "rounded-2xl px-4 py-2.5 text-sm",
+                            style: {
+                              background: msg.sender === myAddress ? "oklch(0.82 0.19 152 / 0.15)" : "oklch(0.22 0.016 240)",
+                              color: msg.sender === myAddress ? "oklch(0.90 0.15 152)" : "oklch(0.90 0.01 220)",
+                              borderRadius: msg.sender === myAddress ? "18px 18px 4px 18px" : "18px 18px 18px 4px"
+                            },
+                            children: msg.content
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          "div",
+                          {
+                            className: `flex items-center gap-1 text-[10px] text-muted-foreground mt-1 ${msg.sender === myAddress ? "justify-end" : "justify-start"}`,
+                            children: [
+                              formatTime(Number(msg.timestamp)),
+                              msg.sender === myAddress && /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "w-3 h-3 opacity-60" })
+                            ]
+                          }
+                        )
+                      ] })
+                    },
+                    `${msg.sender}-${String(msg.timestamp)}-${i}`
+                  )),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: messagesEndRef })
+                ] }) }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 sm:px-5 py-3 border-t border-surface-3 flex-shrink-0 flex items-center gap-2 sm:gap-3", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
