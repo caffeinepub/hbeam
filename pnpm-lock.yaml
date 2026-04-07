@@ -141,8 +141,8 @@ importers:
         specifier: ^8.2.1
         version: 8.6.0(react@19.1.1)
       hoosat-sdk-web:
-        specifier: 0.1.7
-        version: 0.1.7
+        specifier: file:../../hoosat-sdk-web-fresh.tgz
+        version: file:hoosat-sdk-web-fresh.tgz
       input-otp:
         specifier: ^1.4.1
         version: 1.4.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -2159,8 +2159,9 @@ packages:
   hls.js@1.6.13:
     resolution: {integrity: sha512-hNEzjZNHf5bFrUNvdS4/1RjIanuJ6szpWNfTaX5I6WfGynWXGT7K/YQLYtemSvFExzeMdgdE4SsyVLJbd5PcZA==}
 
-  hoosat-sdk-web@0.1.7:
-    resolution: {integrity: sha512-hefaQI3w+tfV2ZNMR+I6+8fEBIAlS1ZILWEx0OhPYqkZ2OSP+OaVu3w+5hzDqjLTDM+s+vbQsQZx5HEO1AdYkg==}
+  hoosat-sdk-web@file:hoosat-sdk-web-fresh.tgz:
+    resolution: {integrity: sha512-GJWimS+3pgf2SD9WAxveHXj0IGk6EGgUnx8Rg9Gt7vpQqAPE/6bLtLDpJJz+NUxKa7BxszXsy8Hlhupt0XTpXA==, tarball: file:hoosat-sdk-web-fresh.tgz}
+    version: 0.1.7
 
   hyphenate-style-name@1.1.0:
     resolution: {integrity: sha512-WDC/ui2VVRrz3jOVi+XtjqkDjiVjTtFaAGiW37k6b+ohyQ5wYDOGkvCZa8+H0nx3gyvv0+BST9xuOgIyGQ00gw==}
@@ -4870,7 +4871,7 @@ snapshots:
 
   hls.js@1.6.13: {}
 
-  hoosat-sdk-web@0.1.7:
+  hoosat-sdk-web@file:hoosat-sdk-web-fresh.tgz:
     dependencies:
       '@noble/hashes': 1.8.0
       '@noble/secp256k1': 2.3.0

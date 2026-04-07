@@ -1,20 +1,18 @@
 # HBeam
 
 ## Current State
-HBeam is a Hoosat blockchain wallet and messenger app. The app has working backend messaging APIs (sendMessage, getMessages, addContact, etc.) and a full frontend. The core recurring issue is that `hoosat-sdk-web` was never properly installed as a package dependency, causing wallet generation, import, and unlock to throw errors via the stub.
+The backend Motoko actor uses `mo:core/Map` and `mo:core/List` for storing contacts, messages, and wallet addresses. The previous code called `Map.add` and `Map.get` as module-level functions with an explicit `compare` argument — but the build script uses `-E M0237` which promotes the "compare can be inferred" warning to a **compile error**, meaning those calls were rejected at build time. The contacts and messages storage was effectively broken, causing `addContact`, `getContacts`, `sendMessage`, and `getMessages` to silently fail or use stale/empty state.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `hoosat-sdk-web@0.1.7` to package.json dependencies (properly installed from npm)
+- Nothing new.
 
 ### Modify
-- Nothing else — the logic and UI are correct once the SDK is properly available
+- `src/backend/main.mo`: Rewrite all Map and List calls to use Motoko dot-notation (`map.get(key)`, `map.add(key, value)`, `list.add(item)`, `list.toArray()`, `list.filter(pred)`) which is what the build flags require. Remove unused `caller` bindings (replace with `caller = _`). Fix `getAllWalletAddresses` to use chained dot-notation on the Iter returned by `walletAddresses.entries()`. Add `persistent` keyword to actor for stable storage across upgrades.
 
 ### Remove
-- Nothing
+- Unused `import Nat`, `import Iter`, `import Order` (not needed after refactor).
 
 ## Implementation Plan
-1. Install `hoosat-sdk-web@0.1.7` from npm and persist it in package.json
-2. Verify no vite alias overrides it to the stub
-3. Run full build validation
+1. Fix `main.mo` — done. Compiles cleanly with only a redundant-keyword warning (M0217, not an error).

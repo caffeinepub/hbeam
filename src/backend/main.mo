@@ -1,13 +1,10 @@
-import Nat "mo:core/Nat";
 import Text "mo:core/Text";
-import Iter "mo:core/Iter";
 import Map "mo:core/Map";
 import List "mo:core/List";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
-import Order "mo:core/Order";
 
-actor {
+persistent actor {
   type HoosatAddress = Text;
 
   type MessageType = {
@@ -43,12 +40,6 @@ actor {
     hoosatAddress : HoosatAddress;
   };
 
-  module WalletAddress {
-    public func compare(a : WalletAddress, b : WalletAddress) : Order.Order {
-      Text.compare(a.hoosatAddress, b.hoosatAddress);
-    };
-  };
-
   let conversations = Map.empty<ConversationId, List.List<Message>>();
   let contacts = Map.empty<HoosatAddress, List.List<Contact>>();
   let walletAddresses = Map.empty<Principal, HoosatAddress>();
@@ -61,7 +52,7 @@ actor {
     };
   };
 
-  public shared ({ caller }) func sendMessage(
+  public shared ({ caller = _ }) func sendMessage(
     sender : HoosatAddress,
     recipient : HoosatAddress,
     content : Text,
@@ -88,7 +79,7 @@ actor {
     };
   };
 
-  public query ({ caller }) func getMessages(
+  public query ({ caller = _ }) func getMessages(
     user1 : HoosatAddress,
     user2 : HoosatAddress
   ) : async [Message] {
@@ -99,7 +90,7 @@ actor {
     };
   };
 
-  public shared ({ caller }) func addContact(userAddress : HoosatAddress, contactAddress : HoosatAddress, displayName : Text) : async () {
+  public shared ({ caller = _ }) func addContact(userAddress : HoosatAddress, contactAddress : HoosatAddress, displayName : Text) : async () {
     switch (contacts.get(userAddress)) {
       case (null) {
         let newContacts = List.empty<Contact>();
@@ -107,26 +98,22 @@ actor {
         contacts.add(userAddress, newContacts);
       };
       case (?existingContacts) {
-        let newContact : Contact = {
-          address = contactAddress;
-          displayName;
-        };
-        existingContacts.add(newContact);
+        existingContacts.add({ address = contactAddress; displayName });
       };
     };
   };
 
-  public shared ({ caller }) func removeContact(userAddress : HoosatAddress, contactAddress : HoosatAddress) : async () {
+  public shared ({ caller = _ }) func removeContact(userAddress : HoosatAddress, contactAddress : HoosatAddress) : async () {
     switch (contacts.get(userAddress)) {
       case (null) { Runtime.trap("User has no contacts") };
       case (?existingContacts) {
-        let filteredContacts = existingContacts.filter(func(c) { c.address != contactAddress });
+        let filteredContacts = existingContacts.filter(func(c : Contact) : Bool { c.address != contactAddress });
         contacts.add(userAddress, filteredContacts);
       };
     };
   };
 
-  public query ({ caller }) func getContacts(userAddress : HoosatAddress) : async [Contact] {
+  public query ({ caller = _ }) func getContacts(userAddress : HoosatAddress) : async [Contact] {
     switch (contacts.get(userAddress)) {
       case (null) { [] };
       case (?userContacts) { userContacts.toArray() };
@@ -137,14 +124,18 @@ actor {
     walletAddresses.add(caller, hoosatAddress);
   };
 
-  public query ({ caller }) func getWalletAddress(user : Principal) : async HoosatAddress {
+  public query ({ caller = _ }) func getWalletAddress(user : Principal) : async HoosatAddress {
     switch (walletAddresses.get(user)) {
       case (null) { Runtime.trap("Wallet address not found") };
       case (?address) { address };
     };
   };
 
-  public query ({ caller }) func getAllWalletAddresses() : async [WalletAddress] {
-    walletAddresses.entries().map(func((principal, hoosatAddress)) { { principal; hoosatAddress } }).toArray().sort();
+  public query ({ caller = _ }) func getAllWalletAddresses() : async [WalletAddress] {
+    walletAddresses.entries()
+      .map(func((p, h) : (Principal, HoosatAddress)) : WalletAddress {
+        { principal = p; hoosatAddress = h }
+      })
+      .toArray();
   };
 };
