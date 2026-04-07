@@ -12,10 +12,6 @@ process.env.II_URL = process.env.II_URL || ii_url;
 process.env.STORAGE_GATEWAY_URL =
   process.env.STORAGE_GATEWAY_URL || "https://blob.caffeine.ai";
 
-const hoosatStub = fileURLToPath(
-  new URL("./src/lib/hoosat-sdk-stub.ts", import.meta.url)
-);
-
 export default defineConfig({
   logLevel: "error",
   build: {
@@ -49,13 +45,16 @@ export default defineConfig({
     react(),
   ],
   resolve: {
-    alias: {
-      declarations: fileURLToPath(
-        new URL("../declarations", import.meta.url)
-      ),
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-      "hoosat-sdk-web": hoosatStub,
-    },
+    alias: [
+      {
+        find: "declarations",
+        replacement: fileURLToPath(new URL("../declarations", import.meta.url)),
+      },
+      {
+        find: "@",
+        replacement: fileURLToPath(new URL("./src", import.meta.url)),
+      },
+    ],
     dedupe: ["@dfinity/agent"],
   },
 });

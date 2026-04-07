@@ -94,24 +94,25 @@ persistent actor {
   };
 
   public shared ({ caller = _ }) func addContact(userAddress : HoosatAddress, contactAddress : HoosatAddress, displayName : Text) : async () {
+    let newContact : Contact = { address = contactAddress; displayName };
     switch (contacts.get(userAddress)) {
       case (null) {
-        let newContacts = List.empty<Contact>();
-        newContacts.add({ address = contactAddress; displayName });
-        contacts.add(userAddress, newContacts);
+        let newList = List.empty<Contact>();
+        newList.add(newContact);
+        contacts.add(userAddress, newList);
       };
       case (?existingContacts) {
-        existingContacts.add({ address = contactAddress; displayName });
+        existingContacts.add(newContact);
       };
     };
   };
 
   public shared ({ caller = _ }) func removeContact(userAddress : HoosatAddress, contactAddress : HoosatAddress) : async () {
     switch (contacts.get(userAddress)) {
-      case (null) { Runtime.trap("User has no contacts") };
+      case (null) { () };
       case (?existingContacts) {
-        let filteredContacts = existingContacts.filter(func(c : Contact) : Bool { c.address != contactAddress });
-        contacts.add(userAddress, filteredContacts);
+        let filtered = existingContacts.filter(func(c : Contact) : Bool { c.address != contactAddress });
+        contacts.add(userAddress, filtered);
       };
     };
   };
@@ -135,10 +136,10 @@ persistent actor {
   };
 
   public query ({ caller = _ }) func getAllWalletAddresses() : async [WalletAddress] {
-    walletAddresses.entries()
-      .map(func((p, h) : (Principal, HoosatAddress)) : WalletAddress {
-        { principal = p; hoosatAddress = h }
-      })
-      .toArray();
+    let result = List.empty<WalletAddress>();
+    for ((p, h) in walletAddresses.entries()) {
+      result.add({ principal = p; hoosatAddress = h });
+    };
+    result.toArray();
   };
 };
