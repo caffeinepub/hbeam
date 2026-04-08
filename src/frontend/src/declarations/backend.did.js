@@ -74,6 +74,11 @@ export const MessageType = IDL.Variant({
 });
 
 export const idlService = IDL.Service({
+  '_immutableObjectStorageCreateCertificate' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(IDL.Nat8)],
+      ['query'],
+    ),
   'addContact' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text], [], []),
   'addReaction' : IDL.Func(
       [HoosatAddress, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
@@ -216,6 +221,11 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
+    '_immutableObjectStorageCreateCertificate' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(IDL.Nat8)],
+        ['query'],
+      ),
     'addContact' : IDL.Func([HoosatAddress, HoosatAddress, IDL.Text], [], []),
     'addReaction' : IDL.Func(
         [HoosatAddress, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],

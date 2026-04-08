@@ -73,6 +73,7 @@ type Contact =
    displayName: text;
  };
 service : {
+  _immutableObjectStorageCreateCertificate: (_hash: text) -> (blob) query;
   addContact: (userAddress: HoosatAddress, contactAddress: HoosatAddress,
    displayName: text) -> ();
   addReaction: (userId: HoosatAddress, convId: text, messageId: text, emoji:

@@ -66,6 +66,10 @@ export interface WalletAddress {
   'hoosatAddress' : HoosatAddress,
 }
 export interface _SERVICE {
+  '_immutableObjectStorageCreateCertificate' : ActorMethod<
+    [string],
+    Uint8Array
+  >,
   'addContact' : ActorMethod<[HoosatAddress, HoosatAddress, string], undefined>,
   'addReaction' : ActorMethod<
     [HoosatAddress, string, string, string, bigint],

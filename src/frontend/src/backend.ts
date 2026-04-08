@@ -154,6 +154,7 @@ export enum PaymentStatus {
     failed = "failed"
 }
 export interface backendInterface {
+    _immutableObjectStorageCreateCertificate(_hash: string): Promise<Uint8Array>;
     addContact(userAddress: HoosatAddress, contactAddress: HoosatAddress, displayName: string): Promise<void>;
     addReaction(userId: HoosatAddress, convId: string, messageId: string, emoji: string, timestamp: bigint): Promise<void>;
     createPaymentMessage(sender: HoosatAddress, recipient: HoosatAddress, amountHtn: string, timestamp: bigint): Promise<string>;
@@ -178,6 +179,20 @@ export interface backendInterface {
 import type { FileMetadata as _FileMetadata, HoosatAddress as _HoosatAddress, MessagePublic as _MessagePublic, MessageType as _MessageType, MessageTypePublic as _MessageTypePublic, PaymentRecord as _PaymentRecord, PaymentStatus as _PaymentStatus, Reaction as _Reaction } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async _immutableObjectStorageCreateCertificate(arg0: string): Promise<Uint8Array> {
+        if (this.processError) {
+            try {
+                const result = await this.actor._immutableObjectStorageCreateCertificate(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor._immutableObjectStorageCreateCertificate(arg0);
+            return result;
+        }
+    }
     async addContact(arg0: HoosatAddress, arg1: HoosatAddress, arg2: string): Promise<void> {
         if (this.processError) {
             try {

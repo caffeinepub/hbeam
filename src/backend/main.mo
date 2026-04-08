@@ -1,3 +1,4 @@
+// v26 — add _immutableObjectStorageCreateCertificate for object-storage extension
 import Text "mo:core/Text";
 import Map "mo:core/Map";
 import List "mo:core/List";
@@ -651,6 +652,15 @@ actor {
       case (null) { [] };
       case (?userContacts) { userContacts.toArray() };
     };
+  };
+
+  // ── Object Storage Extension ─────────────────────────────────────────────
+  // Required by @caffeineai/object-storage StorageClient.getCertificate().
+  // The IC replica attaches a certified response certificate to every query call
+  // in the v3 HTTP response envelope. The function body is a no-op; only its
+  // existence as a certified query matters so the replica can generate the cert.
+  public query func _immutableObjectStorageCreateCertificate(_hash : Text) : async Blob {
+    "" : Blob;
   };
 
   // ── Wallet Registry ───────────────────────────────────────────────────────
