@@ -846,7 +846,7 @@ export function AppView({
   onDisconnect: () => void;
   onLock: () => void;
 }) {
-  const { actor } = useActor();
+  const { actor, isFetching: actorLoading } = useActor();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const sendMessageMutation = useSendMessage(myAddress);
   const { sendMedia, uploadState, resetUpload } = useSendMedia(myAddress);
@@ -1212,7 +1212,12 @@ export function AppView({
                   <Button
                     type="button"
                     onClick={handleAddContact}
-                    disabled={!newContactAddr || addContact.isPending || !actor}
+                    disabled={
+                      !newContactAddr ||
+                      addContact.isPending ||
+                      !actor ||
+                      actorLoading
+                    }
                     className="w-full rounded-full h-12"
                     style={{
                       background: "oklch(0.82 0.19 152)",
@@ -1220,12 +1225,12 @@ export function AppView({
                     }}
                     data-ocid="contacts.add.confirm_button"
                   >
-                    {addContact.isPending ? (
+                    {addContact.isPending || actorLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : (
                       <Plus className="w-4 h-4 mr-2" />
                     )}
-                    Add Contact
+                    {actorLoading ? "Connecting..." : "Add Contact"}
                   </Button>
                 </div>
               </DialogContent>

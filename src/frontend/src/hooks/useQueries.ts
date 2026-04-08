@@ -20,15 +20,18 @@ function convId(a: string, b: string): string {
 // ─── Contacts ──────────────────────────────────────────────────────────────
 
 export function useGetContacts(userAddress: string) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<Contact[]>({
     queryKey: ["contacts", userAddress],
     queryFn: async () => {
       if (!actor || !userAddress) return [];
       return actor.getContacts(userAddress);
     },
-    enabled: !!actor && !isFetching && !!userAddress,
-    staleTime: 120_000,
+    // Do NOT include isFetching in the enabled guard — it creates a race where
+    // invalidateQueries fires while isFetching=true and the refetch is silently
+    // skipped, so newly added contacts never appear.
+    enabled: !!actor && !!userAddress,
+    staleTime: 0,
     retry: 3,
     retryDelay: 1000,
   });
@@ -42,12 +45,35 @@ export function useAddContact(userAddress: string) {
       contactAddress,
       displayName,
     }: { contactAddress: string; displayName: string }) => {
-      if (!actor) throw new Error("Actor not ready — try again");
-      if (!userAddress) throw new Error("No wallet address");
-      return actor.addContact(userAddress, contactAddress, displayName);
+      if (!actor)
+        throw new Error("Actor not ready — please wait a moment and try again");
+      if (!userAddress)
+        throw new Error("No wallet address — connect your wallet first");
+      if (!contactAddress.trim())
+        throw new Error("Contact address is required");
+      console.log("[addContact] calling actor.addContact", {
+        userAddress,
+        contactAddress,
+        displayName,
+      });
+      const result = await actor.addContact(
+        userAddress,
+        contactAddress.trim(),
+        displayName,
+      );
+      console.log("[addContact] success", result);
+      return result;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["contacts", userAddress] });
+      console.log("[addContact] invalidating contacts cache for", userAddress);
+      // Invalidate and immediately refetch — do not rely on staleTime
+      qc.invalidateQueries({
+        queryKey: ["contacts", userAddress],
+        refetchType: "all",
+      });
+    },
+    onError: (err) => {
+      console.error("[addContact] error:", err);
     },
   });
 }
@@ -69,7 +95,7 @@ export function useRemoveContact(userAddress: string) {
 // ─── Messages ──────────────────────────────────────────────────────────────
 
 export function useGetMessages(myAddress: string, contactAddress: string) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const query = useQuery<MessagePublic[]>({
     queryKey: ["messages", myAddress, contactAddress],
     queryFn: async () => {
@@ -82,7 +108,7 @@ export function useGetMessages(myAddress: string, contactAddress: string) {
       );
       return msgs as MessagePublic[];
     },
-    enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
+    enabled: !!actor && !!myAddress && !!contactAddress,
     refetchInterval: 8000,
     staleTime: 0,
     placeholderData: (prev) => prev,
@@ -279,14 +305,14 @@ export function useMarkMessagesRead(myAddress: string) {
 }
 
 export function useUnreadCount(myAddress: string, contactAddress: string) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<bigint>({
     queryKey: ["unread", myAddress, contactAddress],
     queryFn: async () => {
       if (!actor || !myAddress || !contactAddress) return BigInt(0);
       return actor.getUnreadCount(myAddress, contactAddress);
     },
-    enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
+    enabled: !!actor && !!myAddress && !!contactAddress,
     refetchInterval: 5000,
     retry: 3,
     retryDelay: 1000,
@@ -296,7 +322,7 @@ export function useUnreadCount(myAddress: string, contactAddress: string) {
 // ─── Typing Status ─────────────────────────────────────────────────────────
 
 export function useTypingStatus(myAddress: string, contactAddress: string) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const cid = convId(myAddress, contactAddress);
   return useQuery<string[]>({
     queryKey: ["typing", cid],
@@ -304,7 +330,7 @@ export function useTypingStatus(myAddress: string, contactAddress: string) {
       if (!actor || !myAddress || !contactAddress) return [];
       return actor.getTypingStatus(cid);
     },
-    enabled: !!actor && !isFetching && !!myAddress && !!contactAddress,
+    enabled: !!actor && !!myAddress && !!contactAddress,
     refetchInterval: 3000,
     staleTime: 0,
     retry: 2,
@@ -329,15 +355,14 @@ export function useSetTypingStatus(myAddress: string) {
 // ─── Presence ──────────────────────────────────────────────────────────────
 
 export function usePresence(myAddress: string, contactAddresses: string[]) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<PresenceRecord[]>({
     queryKey: ["presence", ...contactAddresses],
     queryFn: async () => {
       if (!actor || !myAddress || contactAddresses.length === 0) return [];
       return actor.getPresence(contactAddresses);
     },
-    enabled:
-      !!actor && !isFetching && !!myAddress && contactAddresses.length > 0,
+    enabled: !!actor && !!myAddress && contactAddresses.length > 0,
     refetchInterval: 8000,
     retry: 2,
     retryDelay: 1000,
@@ -397,14 +422,14 @@ export function useUpdatePaymentStatus() {
 }
 
 export function usePaymentStatus(messageId: string | null) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<[PaymentStatus, string] | null>({
     queryKey: ["payment-status", messageId],
     queryFn: async () => {
       if (!actor || !messageId) return null;
       return actor.getPaymentStatus(messageId);
     },
-    enabled: !!actor && !isFetching && !!messageId,
+    enabled: !!actor && !!messageId,
     refetchInterval: 5000,
     retry: 3,
     retryDelay: 1000,
@@ -412,14 +437,14 @@ export function usePaymentStatus(messageId: string | null) {
 }
 
 export function usePaymentHistory(userAddress: string) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<PaymentRecord[]>({
     queryKey: ["payment-history", userAddress],
     queryFn: async () => {
       if (!actor || !userAddress) return [];
       return actor.getPaymentHistory(userAddress);
     },
-    enabled: !!actor && !isFetching && !!userAddress,
+    enabled: !!actor && !!userAddress,
     refetchInterval: 10000,
     retry: 3,
     retryDelay: 1000,
