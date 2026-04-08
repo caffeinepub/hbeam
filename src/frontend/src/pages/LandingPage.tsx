@@ -115,8 +115,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
                 <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 max-w-md leading-relaxed">
                   Send encrypted messages, files, voice notes, and HTN payments
-                  — all in one blazing-fast app built on Hoosat&apos;s 1-second
-                  block chain.
+                  — all in one blazing-fast app built on Hoosat&apos;s
+                  0.2-second blockchain.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -147,7 +147,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <Zap className="w-4 h-4 text-mint" />
-                    <span>~1s blocks</span>
+                    <span>~0.2s blocks</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <DollarSign className="w-4 h-4 text-mint" />
@@ -201,7 +201,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                       {[
                         { me: false, text: "Payment received! 🎉" },
                         { me: true, text: "Sending 10 HTN..." },
-                        { me: false, text: "Got it in 1 second! ⚡" },
+                        { me: false, text: "Got it in 0.2 seconds! ⚡" },
                       ].map((msg) => (
                         <div
                           key={msg.text}
@@ -294,8 +294,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               },
               {
                 icon: Zap,
-                title: "1-Second Blocks",
-                desc: "Hoosat confirms transactions in about 1 second. No waiting.",
+                title: "0.2-Second Blocks",
+                desc: "Hoosat confirms transactions in about 0.2 seconds. No waiting.",
               },
               {
                 icon: Lock,
