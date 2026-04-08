@@ -12,6 +12,22 @@
   src: local("Plus Jakarta Sans");
 }
 
+@font-face {
+  font-family: "General Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/assets/fonts/GeneralSans.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/assets/fonts/JetBrainsMono.woff2") format("woff2");
+}
+
 @layer base {
   :root {
     --radius: 0.75rem;
@@ -87,5 +103,60 @@
 
   .text-muted-custom {
     color: oklch(0.62 0.02 220);
+  }
+
+  /* Media message utilities */
+  .media-thumbnail {
+    @apply rounded-lg overflow-hidden;
+    border: 1px solid oklch(var(--border) / 0.5);
+    background: oklch(var(--muted) / 0.2);
+  }
+
+  .media-overlay {
+    @apply absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200;
+  }
+
+  .audio-player {
+    @apply flex items-center gap-3 p-3 rounded-lg;
+    background: oklch(var(--muted) / 0.1);
+    border: 1px solid oklch(0.25 0.016 240 / 0.5);
+  }
+
+  .progress-bar {
+    @apply h-1 rounded-full overflow-hidden;
+    background: oklch(var(--muted) / 0.3);
+  }
+
+  .progress-fill {
+    @apply h-full bg-primary rounded-full transition-all duration-100;
+  }
+
+  .upload-progress {
+    @apply h-1 rounded-full overflow-hidden my-2;
+    background: oklch(var(--muted) / 0.2);
+  }
+
+  .voice-recorder-modal {
+    @apply fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-50;
+  }
+
+  .voice-recorder-panel {
+    @apply w-full max-w-md bg-card border-t border-border rounded-t-2xl p-6 space-y-4 shadow-lg;
+  }
+
+  .recorder-button {
+    @apply flex items-center justify-center w-16 h-16 rounded-full transition-all duration-200 font-semibold;
+  }
+
+  .recorder-button-primary {
+    @apply recorder-button bg-primary text-primary-foreground hover:shadow-mint;
+  }
+
+  .recorder-button-secondary {
+    @apply recorder-button bg-muted text-muted-foreground hover:bg-muted/80;
+  }
+
+  .time-display {
+    @apply font-mono text-sm text-muted-foreground tracking-wider;
   }
 }

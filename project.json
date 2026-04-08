@@ -1,25 +1,27 @@
 {
-  "overview": "HBeam is a messaging and payments app built for the Hoosat blockchain. Users can generate or import a wallet, add contacts by Hoosat address, exchange instant messages with typing indicators and read receipts, and send HTN payments that are tracked from broadcast to blockchain confirmation.",
+  "overview": "HBeam is a Hoosat blockchain messenger and wallet app — a feature-rich clone of kbeam.app rebuilt for the Hoosat network. It supports wallet generation and import, HTN payments, private messaging with full media support (images, videos, files, voice notes), typing indicators, and presence.",
   "features": [
-    "Wallet generation and import with encrypted private key storage",
-    "Contact management by Hoosat address",
-    "Real-time chat with 2-second polling, typing indicators, and read receipts",
-    "Emoji reactions on messages",
-    "HTN payment messages with status tracking: pending → broadcasted → confirmed",
-    "Media and voice message uploads",
-    "Contact presence (online/offline status)",
-    "Hoosat live balance display"
+    "Send and receive text, image, video, file, and voice note messages in private chats",
+    "Voice recorder with start, stop, preview, and send — audio player inline in chat bubbles",
+    "Upload progress bar, retry on failure, and fallback states for media",
+    "Image thumbnails inline in chat; file/video messages show name, size, and download link",
+    "HTN payments sent directly inside chat conversations",
+    "Wallet generation, import, and connect using Hoosat SDK",
+    "Contact management with presence (online/offline) and typing indicators",
+    "Polling-based real-time message sync every 8 seconds",
+    "Fully persistent — all messages and media reload correctly after refresh"
   ],
-  "category": "messaging",
+  "category": "productivity",
   "tags": [
-    "hoosat",
     "blockchain",
     "messaging",
-    "payments",
     "wallet",
-    "htn",
+    "hoosat",
+    "voice-notes",
+    "file-sharing",
     "chat",
-    "web3"
+    "crypto",
+    "payments"
   ],
-  "last_updated": "2026-04-07T17:19:01.780Z"
+  "last_updated": "2026-04-08T02:07:30.921Z"
 }

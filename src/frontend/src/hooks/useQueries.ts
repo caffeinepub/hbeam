@@ -3,12 +3,14 @@ import { useMemo } from "react";
 import { MessageType } from "../backend";
 import type {
   Contact,
+  FileMetadata,
   MessagePublic,
   PaymentRecord,
   PaymentStatus,
   PresenceRecord,
 } from "../backend.d.ts";
 import { useActor } from "./useActor";
+import { useMediaUpload } from "./useMediaUpload";
 
 // Derive a stable convId from two addresses (sorted so A→B == B→A)
 function convId(a: string, b: string): string {
@@ -156,6 +158,62 @@ export function useSendMessage(myAddress: string) {
       });
     },
   });
+}
+
+// ─── Media Upload + Send ────────────────────────────────────────────────────
+
+export function useSendMedia(myAddress: string) {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  const { upload, state: uploadState, reset: resetUpload } = useMediaUpload();
+
+  const sendMedia = useMutation({
+    mutationFn: async ({
+      file,
+      contactAddress,
+      messageType,
+    }: {
+      file: File;
+      contactAddress: string;
+      messageType: "file" | "voice";
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      if (!myAddress) throw new Error("No wallet address");
+      if (!contactAddress) throw new Error("No contact selected");
+
+      const fileUrl = await upload(file);
+      if (!fileUrl) throw new Error("Upload cancelled");
+
+      const meta: FileMetadata = {
+        fileName: file.name,
+        fileSize: BigInt(file.size),
+        fileType: file.type,
+      };
+
+      const msgType =
+        messageType === "voice" ? MessageType.voice : MessageType.file;
+      const timestamp = BigInt(Date.now());
+      const msgId = await actor.sendMessage(
+        myAddress,
+        contactAddress,
+        fileUrl,
+        timestamp,
+        msgType,
+        meta,
+      );
+      return { msgId, fileUrl, meta };
+    },
+    onSettled: (_data, _err, variables) => {
+      if (variables) {
+        qc.invalidateQueries({
+          queryKey: ["messages", myAddress, variables.contactAddress],
+        });
+      }
+      resetUpload();
+    },
+  });
+
+  return { sendMedia, uploadState, resetUpload };
 }
 
 export function useAddReaction(myAddress: string) {

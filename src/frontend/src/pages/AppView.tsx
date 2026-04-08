@@ -15,6 +15,7 @@ import {
   HoosatWebClient,
 } from "hoosat-sdk-web";
 import {
+  AlertCircle,
   ArrowLeft,
   Check,
   CheckCheck,
@@ -27,6 +28,7 @@ import {
   Mic,
   Paperclip,
   Plus,
+  RotateCcw,
   Send,
   Trash2,
   Unlock,
@@ -39,6 +41,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PaymentStatus } from "../backend";
 import type { Contact, MessagePublic } from "../backend.d.ts";
+import { MediaPreview } from "../components/MediaPreview";
+import { VoiceRecorder } from "../components/VoiceRecorder";
 import { useActor } from "../hooks/useActor";
 import {
   useAddContact,
@@ -51,6 +55,7 @@ import {
   usePresence,
   useRegisterWallet,
   useRemoveContact,
+  useSendMedia,
   useSendMessage,
   useSetPresence,
   useSetTypingStatus,
@@ -712,6 +717,21 @@ const MessageBubble = memo(function MessageBubble({
             </div>
             <PaymentBadge status={msg.paymentStatus} />
           </div>
+        ) : msg.messageType === "file" || msg.messageType === "voice" ? (
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              borderRadius: isMine
+                ? "18px 18px 4px 18px"
+                : "18px 18px 18px 4px",
+            }}
+          >
+            <MediaPreview
+              url={msg.content}
+              metadata={msg.fileMetadata}
+              messageType={msg.messageType}
+            />
+          </div>
         ) : (
           <div
             className="rounded-2xl px-4 py-2.5 text-sm"
@@ -829,9 +849,14 @@ export function AppView({
   const { actor } = useActor();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const sendMessageMutation = useSendMessage(myAddress);
+  const { sendMedia, uploadState, resetUpload } = useSendMedia(myAddress);
   const addReactionMutation = useAddReaction(myAddress);
   const { data: messages = [] as MessagePublic[], isPending: messagesLoading } =
     useGetMessages(myAddress, selectedContact?.address ?? "");
+
+  // File input ref for attachment button
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
 
   // Typing status
   const { data: typingUsers = [] } = useTypingStatus(
@@ -871,6 +896,7 @@ export function AppView({
   const messagesCount = messages.length;
   const prevContactRef = useRef<string | null>(null);
   const userSentRef = useRef(false);
+  const lastSelectedFileRef = useRef<File | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll anchor
   useEffect(() => {
@@ -930,6 +956,46 @@ export function AppView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, selectedContact, sendMessageMutation, setTypingMutation]);
+
+  const handleFileSelect = useCallback(
+    async (file: File) => {
+      if (!selectedContact) return;
+      const msgType = "file";
+      lastSelectedFileRef.current = file;
+      userSentRef.current = true;
+      try {
+        await sendMedia.mutateAsync({
+          file,
+          contactAddress: selectedContact.address,
+          messageType: msgType,
+        });
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Upload failed");
+      }
+    },
+    [selectedContact, sendMedia],
+  );
+
+  const handleVoiceSend = useCallback(
+    async (audioBlob: Blob, _durationSeconds: number) => {
+      if (!selectedContact) return;
+      const voiceFile = new File([audioBlob], `voice-${Date.now()}.webm`, {
+        type: audioBlob.type || "audio/webm",
+      });
+      userSentRef.current = true;
+      setShowVoiceRecorder(false);
+      try {
+        await sendMedia.mutateAsync({
+          file: voiceFile,
+          contactAddress: selectedContact.address,
+          messageType: "voice",
+        });
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Voice send failed");
+      }
+    },
+    [selectedContact, sendMedia],
+  );
 
   const handleInputChange = useCallback(
     (val: string) => {
@@ -1423,52 +1489,130 @@ export function AppView({
                 </AnimatePresence>
               </ScrollArea>
 
-              {/* Message input */}
-              <div className="px-3 sm:px-5 py-3 border-t border-surface-3 flex-shrink-0 flex items-center gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-mint transition-colors p-1.5 touch-manipulation"
-                  data-ocid="chat.attach.button"
-                  title="Attach file (coming soon)"
-                  aria-label="Attach file"
-                >
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-mint transition-colors p-1.5 touch-manipulation"
-                  data-ocid="chat.voice.button"
-                  title="Voice message (coming soon)"
-                  aria-label="Record voice message"
-                >
-                  <Mic className="w-5 h-5" />
-                </button>
-                <Input
-                  value={input}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-surface-2 border-surface-3 rounded-full h-11 text-sm"
-                  style={{ fontSize: "16px" }}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                  data-ocid="chat.message.input"
-                />
-                <button
-                  type="button"
-                  onClick={sendMessage}
-                  disabled={!input.trim() || sendMessageMutation.isPending}
-                  className="w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-40 flex-shrink-0 touch-manipulation"
-                  style={{
-                    background: "oklch(0.82 0.19 152)",
-                    color: "oklch(0.10 0.01 150)",
-                  }}
-                  data-ocid="chat.send.button"
-                >
-                  {sendMessageMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                </button>
+              {/* Message input area */}
+              <div className="px-3 sm:px-5 py-3 border-t border-surface-3 flex-shrink-0">
+                {/* Upload progress bar */}
+                {uploadState.status === "uploading" && (
+                  <div className="mb-2">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                      <span>Uploading…</span>
+                      <span>{Math.round(uploadState.progress)}%</span>
+                    </div>
+                    <div className="upload-progress">
+                      <div
+                        className="h-full rounded-full transition-all duration-200"
+                        style={{
+                          width: `${uploadState.progress}%`,
+                          background: "oklch(0.82 0.19 152)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Upload error */}
+                {uploadState.status === "error" && (
+                  <div
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 mb-2 text-xs"
+                    style={{
+                      background: "oklch(0.62 0.22 25 / 0.1)",
+                      border: "1px solid oklch(0.62 0.22 25 / 0.3)",
+                    }}
+                    data-ocid="chat.upload_error"
+                  >
+                    <AlertCircle
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      style={{ color: "oklch(0.65 0.18 25)" }}
+                    />
+                    <span className="flex-1 text-muted-foreground">
+                      Upload failed. Retry?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetUpload();
+                        if (lastSelectedFileRef.current) {
+                          handleFileSelect(lastSelectedFileRef.current);
+                        } else {
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      className="transition-colors font-medium text-xs px-2 py-0.5 rounded"
+                      style={{ color: "oklch(0.82 0.19 152)" }}
+                      aria-label="Retry upload"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                    className="sr-only"
+                    tabIndex={-1}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileSelect(file);
+                      // reset so same file can be re-selected
+                      e.target.value = "";
+                    }}
+                    data-ocid="chat.file_input"
+                  />
+                  {/* Paperclip: triggers file input */}
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-mint transition-colors p-1.5 touch-manipulation disabled:opacity-40"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={
+                      uploadState.status === "uploading" || !selectedContact
+                    }
+                    aria-label="Attach file"
+                    data-ocid="chat.attach.button"
+                  >
+                    <Paperclip className="w-5 h-5" />
+                  </button>
+                  {/* Mic: opens voice recorder */}
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-mint transition-colors p-1.5 touch-manipulation disabled:opacity-40"
+                    onClick={() => setShowVoiceRecorder(true)}
+                    disabled={
+                      uploadState.status === "uploading" || !selectedContact
+                    }
+                    aria-label="Record voice message"
+                    data-ocid="chat.voice.button"
+                  >
+                    <Mic className="w-5 h-5" />
+                  </button>
+                  <Input
+                    value={input}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-surface-2 border-surface-3 rounded-full h-11 text-sm"
+                    style={{ fontSize: "16px" }}
+                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    data-ocid="chat.message.input"
+                  />
+                  <button
+                    type="button"
+                    onClick={sendMessage}
+                    disabled={!input.trim() || sendMessageMutation.isPending}
+                    className="w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-40 flex-shrink-0 touch-manipulation"
+                    style={{
+                      background: "oklch(0.82 0.19 152)",
+                      color: "oklch(0.10 0.01 150)",
+                    }}
+                    data-ocid="chat.send.button"
+                  >
+                    {sendMessageMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
             </>
           ) : (
@@ -1680,11 +1824,18 @@ export function AppView({
           <span className="text-[10px] font-medium">Wallet</span>
         </button>
       </div>
+
+      {/* Voice recorder modal */}
+      {showVoiceRecorder && (
+        <VoiceRecorder
+          onSend={handleVoiceSend}
+          onClose={() => setShowVoiceRecorder(false)}
+          isSending={sendMedia.isPending}
+        />
+      )}
     </div>
   );
 }
-
-// Root export: handles connect screen + app
 export function AppRoot() {
   const wallet = useWallet();
   const [myAddress, setMyAddress] = useState<string | null>(() => {
