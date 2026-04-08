@@ -1,4 +1,4 @@
-// v26 — add _immutableObjectStorageCreateCertificate for object-storage extension
+// v27 — restart stopped canister (IC0508), no logic changes
 import Text "mo:core/Text";
 import Map "mo:core/Map";
 import List "mo:core/List";
