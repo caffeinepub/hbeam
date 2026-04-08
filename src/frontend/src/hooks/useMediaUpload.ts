@@ -1,3 +1,4 @@
+import { loadConfig } from "@caffeineai/core-infrastructure";
 import { StorageClient } from "@caffeineai/object-storage";
 import { HttpAgent } from "@icp-sdk/core/agent";
 import { useCallback, useRef, useState } from "react";
@@ -9,38 +10,15 @@ export type UploadState =
   | { status: "error"; message: string };
 
 async function getStorageClient(): Promise<StorageClient> {
-  const storageGatewayUrl =
-    process.env.STORAGE_GATEWAY_URL ?? "https://blob.caffeine.ai";
+  const config = await loadConfig();
   const agent = HttpAgent.createSync({ host: undefined });
-  // Load env config
-  try {
-    const res = await fetch("/env.json");
-    const cfg = await res.json();
-    const canisterId =
-      cfg.backend_canister_id !== "undefined"
-        ? cfg.backend_canister_id
-        : (process.env.CANISTER_ID_BACKEND ?? "aaaaa-aa");
-    const projectId =
-      cfg.project_id !== "undefined"
-        ? cfg.project_id
-        : "00000000-0000-0000-0000-000000000000";
-    return new StorageClient(
-      "default-bucket",
-      storageGatewayUrl,
-      canisterId,
-      projectId,
-      agent,
-    );
-  } catch {
-    const canisterId = process.env.CANISTER_ID_BACKEND ?? "aaaaa-aa";
-    return new StorageClient(
-      "default-bucket",
-      storageGatewayUrl,
-      canisterId,
-      "00000000-0000-0000-0000-000000000000",
-      agent,
-    );
-  }
+  return new StorageClient(
+    config.bucket_name,
+    config.storage_gateway_url,
+    config.backend_canister_id,
+    config.project_id,
+    agent,
+  );
 }
 
 export function useMediaUpload() {

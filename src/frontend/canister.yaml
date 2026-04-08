@@ -12,7 +12,7 @@ build:
           {
             "backend_host": "http://localhost:8081",
             "backend_canister_id": "$BACKEND_CANISTER_ID",
-            "project_id": "undefined",
+            "project_id": "$PROJECT_ID",
             "ii_derivation_origin": "undefined"
           }
           EOF
