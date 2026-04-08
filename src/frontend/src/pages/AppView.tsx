@@ -1630,14 +1630,7 @@ export function AppView({
                   style={{ background: "oklch(0.18 0.013 240)" }}
                 >
                   <span className="text-muted-foreground">Block time</span>
-                  <span className="text-foreground">~1 second</span>
-                </div>
-                <div
-                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs"
-                  style={{ background: "oklch(0.18 0.013 240)" }}
-                >
-                  <span className="text-muted-foreground">Tx fee</span>
-                  <span className="text-foreground">0.00001 HTN</span>
+                  <span className="text-foreground">~0.2 seconds</span>
                 </div>
               </div>
             </div>
